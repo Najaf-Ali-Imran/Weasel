@@ -1,18 +1,26 @@
 pluginManagement {
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
         mavenCentral()
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         google()
         mavenCentral()
-        // This line is required to find and download NewPipeExtractor.
+        // Add JitPack repository for NewPipe Extractor
         maven { url = uri("https://jitpack.io") }
     }
 }
+
 rootProject.name = "Weasel"
 include(":app")
