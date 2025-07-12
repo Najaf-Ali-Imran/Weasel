@@ -7,7 +7,7 @@
   [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
   [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)](https://developer.android.com/jetpack/compose)
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/Version-0.1.0--beta-orange.svg)](https://github.com/yourusername/weasel/releases)
+  [![Version](https://img.shields.io/badge/Version-0.1.0--beta-orange.svg)](https://github.com/Najaf-Ali-Imran/weasel/releases)
 </div>
 
 <p align="center">
@@ -20,7 +20,7 @@
 
 <div align="center">
   <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332256/WhatsApp_Image_2025-07-12_at_7.53.55_PM_odrnlx.jpg" alt="Weasel Home Screen" width="250">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332256/WhatsApp_Image_2025-07-12_at_7.53.55_PM_odrnlx.jpg" alt="Weasel Player Screen" width="250">
+  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332256/WhatsApp_Image_2025-07-12_at_7.53.56_PM_jbzann.jpg" alt="Weasel Player Screen" width="250">
 </div>
 
 ---
