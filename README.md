@@ -1,7 +1,7 @@
 #  Weasel 
 
 <div align="center">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332400/Untitled_20design_20_7__2025-07-12_07_46_49.091020.png-fotor-20250712195918_erzpk1.png" alt="Weasel Music Logo" width="150" height="150">
+  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752334708/ChatGPT_Image_Jul_12_2025_08_36_29_PM-fotor-2025071220386_yxxsmk.png" alt="Weasel Music Logo" width="150" height="150">
   
   [![Android](https://img.shields.io/badge/Platform-Android-green.svg)](https://android.com)
   [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
