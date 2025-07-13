@@ -7,7 +7,7 @@
   [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
   [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)](https://developer.android.com/jetpack/compose)
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/Version-0.1.0--beta-orange.svg)](https://github.com/Najaf-Ali-Imran/weasel/releases)
+  [![Version](https://img.shields.io/badge/Version-0.1.1--beta-orange.svg)](https://github.com/Najaf-Ali-Imran/weasel/releases)
 </div>
 
 <p align="center">
@@ -143,7 +143,7 @@ Weasel follows a scalable, maintainable architecture pattern with clear separati
 
 ## 📋 Releases
 
-### 🎯 v0.1.0-beta - *Initial Beta Release*
+### 🎯 v0.1.1-beta - *Initial Beta Release*
 **Released**: 7-12-2025
 
 **What's New:**
