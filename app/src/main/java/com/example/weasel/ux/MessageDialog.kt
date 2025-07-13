@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.weasel.ui.theme.AppBlack
 import androidx.compose.ui.window.DialogProperties
 import com.example.weasel.ui.theme.AppCard
 import com.example.weasel.viewmodel.AppMessage
@@ -41,10 +42,11 @@ fun MessageDialog(
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = AppCard
+                containerColor = AppBlack
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 24.dp)
-        ) {
+        )
+        {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -57,7 +59,7 @@ fun MessageDialog(
                         .size(72.dp)
                         .clip(RoundedCornerShape(36.dp))
                         .background(
-                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+                            color = AppBlack
                         ),
                     contentAlignment = Alignment.Center
                 ) {
@@ -79,7 +81,6 @@ fun MessageDialog(
                     textAlign = TextAlign.Center
                 )
 
-                // Replace deprecated Divider with HorizontalDivider
                 HorizontalDivider(
                     modifier = Modifier.width(80.dp),
                     thickness = 1.dp,
@@ -126,7 +127,7 @@ fun MessageDialog(
                     contentPadding = PaddingValues(vertical = 16.dp)
                 ) {
                     Text(
-                        text = "Acknowledge",
+                        text = "Close",
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.SemiBold,
                             letterSpacing = 0.5.sp
@@ -141,7 +142,6 @@ fun MessageDialog(
 
 private fun formatTimestamp(timestamp: Long): String {
     if (timestamp == 0L) return "Date unavailable"
-
     val sdf = SimpleDateFormat("EEEE, MMMM dd, yyyy 'at' HH:mm", Locale.getDefault())
     return sdf.format(Date(timestamp))
 }
