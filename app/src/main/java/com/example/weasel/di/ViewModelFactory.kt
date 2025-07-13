@@ -36,6 +36,9 @@ class ViewModelFactory(
             modelClass.isAssignableFrom(LibraryViewModel::class.java) -> {
                 LibraryViewModel(localMusicRepository, application) as T
             }
+            modelClass.isAssignableFrom(MessageViewModel::class.java) -> {
+                MessageViewModel() as T
+            }
             modelClass.isAssignableFrom(PlaylistDetailViewModel::class.java) -> {
                 val savedStateHandle = extras.createSavedStateHandle()
                 PlaylistDetailViewModel(

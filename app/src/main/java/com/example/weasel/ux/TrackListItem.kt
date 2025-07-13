@@ -83,28 +83,28 @@ fun TrackListItem(
 }
 
 
-private fun Modifier.clickableWithZoom(onClick: () -> Unit) = composed {
-    var isPressed by remember { mutableStateOf(false) }
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "zoomAnimation")
-
-    this
-        .graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        }
-        .clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-            onClick = onClick
-        )
-        .pointerInput(Unit) {
-            while (true) {
-                awaitPointerEventScope {
-                    awaitFirstDown(requireUnconsumed = false)
-                    isPressed = true
-                    waitForUpOrCancellation()
-                    isPressed = false
-                }
-            }
-        }
-}
+//private fun Modifier.clickableWithZoom(onClick: () -> Unit) = composed {
+//    var isPressed by remember { mutableStateOf(false) }
+//    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, label = "zoomAnimation")
+//
+//    this
+//        .graphicsLayer {
+//            scaleX = scale
+//            scaleY = scale
+//        }
+//        .clickable(
+//            interactionSource = remember { MutableInteractionSource() },
+//            indication = null,
+//            onClick = onClick
+//        )
+//        .pointerInput(Unit) {
+//            while (true) {
+//                awaitPointerEventScope {
+//                    awaitFirstDown(requireUnconsumed = false)
+//                    isPressed = true
+//                    waitForUpOrCancellation()
+//                    isPressed = false
+//                }
+//            }
+//        }
+//}

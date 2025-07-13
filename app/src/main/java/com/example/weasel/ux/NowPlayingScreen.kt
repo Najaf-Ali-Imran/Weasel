@@ -4,8 +4,10 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -18,6 +20,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -38,7 +41,6 @@ import java.util.*
 fun NowPlayingScreen(
     viewModel: MusicPlayerViewModel,
     onBackClick: () -> Unit
-
 ) {
     val libraryViewModel: LibraryViewModel = viewModel(factory = (LocalContext.current as MainActivity).viewModelFactory)
 
@@ -56,6 +58,13 @@ fun NowPlayingScreen(
     val track = currentTrack ?: return
 
     val highQualityThumbnailUrl = getHighQualityYouTubeThumbnail(track.thumbnailUrl)
+
+    // Get screen configuration for responsive design
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val screenWidth = configuration.screenWidthDp.dp
+    val isCompactScreen = screenHeight < 700.dp
+    val isSmallScreen = screenWidth < 400.dp
 
     if (showAddToPlaylistDialog) {
         AddToPlaylistDialog(
@@ -93,12 +102,20 @@ fun NowPlayingScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = if (isSmallScreen) 16.dp else 20.dp)
+                .then(
+                    if (isCompactScreen) {
+                        Modifier.verticalScroll(rememberScrollState())
+                    } else {
+                        Modifier
+                    }
+                )
         ) {
+            // Header with back button and controls
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp),
+                    .padding(vertical = if (isCompactScreen) 12.dp else 16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -117,7 +134,7 @@ fun NowPlayingScreen(
                 Text(
                     text = "Now Playing",
                     color = AppText,
-                    fontSize = 16.sp,
+                    fontSize = if (isSmallScreen) 14.sp else 16.sp,
                     fontWeight = FontWeight.Medium
                 )
 
@@ -148,14 +165,24 @@ fun NowPlayingScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            // Spacer with dynamic height
+            Spacer(modifier = Modifier.height(if (isCompactScreen) 5.dp else 10.dp))
+
+            // Album art with responsive sizing
+            val albumArtSize = when {
+                isCompactScreen && isSmallScreen -> 0.7f
+                isCompactScreen -> 0.75f
+                isSmallScreen -> 0.8f
+                else -> 0.85f
+            }
 
             AsyncImage(
                 model = highQualityThumbnailUrl,
                 contentDescription = "Album art",
                 modifier = Modifier
-                    .fillMaxWidth()
+                    .fillMaxWidth(albumArtSize)
                     .aspectRatio(1f)
+                    .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(16.dp))
                     .pointerInput(Unit) {
                         detectHorizontalDragGestures { change, dragAmount ->
@@ -169,7 +196,7 @@ fun NowPlayingScreen(
                 contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(if (isCompactScreen) 16.dp else 32.dp))
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -178,25 +205,37 @@ fun NowPlayingScreen(
                 Text(
                     text = track.title,
                     color = AppText,
-                    fontSize = 24.sp,
+                    fontSize = when {
+                        isCompactScreen && isSmallScreen -> 18.sp
+                        isCompactScreen -> 20.sp
+                        isSmallScreen -> 22.sp
+                        else -> 24.sp
+                    },
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    maxLines = if (isCompactScreen) 1 else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(if (isCompactScreen) 4.dp else 8.dp))
                 Text(
                     text = track.artist,
                     color = AppTextSecondary,
-                    fontSize = 16.sp,
+                    fontSize = when {
+                        isCompactScreen && isSmallScreen -> 13.sp
+                        isCompactScreen -> 14.sp
+                        isSmallScreen -> 15.sp
+                        else -> 16.sp
+                    },
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(if (isCompactScreen) 8.dp else 10.dp))
 
             Column(
                 modifier = Modifier.fillMaxWidth()
@@ -218,45 +257,45 @@ fun NowPlayingScreen(
                     Text(
                         text = formatTime(currentPosition),
                         color = AppTextSecondary,
-                        fontSize = 12.sp
+                        fontSize = if (isSmallScreen) 11.sp else 12.sp
                     )
                     Text(
                         text = formatTime(duration),
                         color = AppTextSecondary,
-                        fontSize = 12.sp
+                        fontSize = if (isSmallScreen) 11.sp else 12.sp
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(if (isCompactScreen) 16.dp else 32.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly,
+                horizontalArrangement = if (isSmallScreen) Arrangement.SpaceBetween else Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // Shuffle
                 IconButton(
                     onClick = { viewModel.toggleShuffle() },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(if (isCompactScreen) 40.dp else 48.dp)
                 ) {
                     Icon(
                         Icons.Default.Shuffle,
                         contentDescription = "Shuffle",
                         tint = if (isShuffleEnabled) AppOrange else AppTextSecondary,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(if (isCompactScreen) 20.dp else 24.dp)
                     )
                 }
 
                 IconButton(
                     onClick = { viewModel.skipToPrevious() },
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(if (isCompactScreen) 48.dp else 56.dp)
                 ) {
                     Icon(
                         Icons.Default.SkipPrevious,
                         contentDescription = "Previous",
                         tint = AppText,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(if (isCompactScreen) 28.dp else 32.dp)
                     )
                 }
 
@@ -264,18 +303,18 @@ fun NowPlayingScreen(
                     onClick = {
                         if (isPlaying) viewModel.pause() else viewModel.play()
                     },
-                    modifier = Modifier.size(72.dp),
+                    modifier = Modifier.size(if (isCompactScreen) 60.dp else 72.dp),
                     enabled = !isBuffering
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(if (isCompactScreen) 52.dp else 64.dp)
                             .background(AppOrange, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         if (isBuffering) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(if (isCompactScreen) 24.dp else 32.dp),
                                 color = Color.White,
                                 strokeWidth = 3.dp
                             )
@@ -284,7 +323,7 @@ fun NowPlayingScreen(
                                 imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                 contentDescription = "Play/Pause",
                                 tint = Color.White,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(if (isCompactScreen) 24.dp else 32.dp)
                             )
                         }
                     }
@@ -292,22 +331,21 @@ fun NowPlayingScreen(
 
                 IconButton(
                     onClick = { viewModel.skipToNext() },
-                    modifier = Modifier.size(56.dp)
+                    modifier = Modifier.size(if (isCompactScreen) 48.dp else 56.dp)
                 ) {
                     Icon(
                         Icons.Default.SkipNext,
                         contentDescription = "Next",
                         tint = AppText,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(if (isCompactScreen) 28.dp else 32.dp)
                     )
                 }
 
                 IconButton(
                     onClick = { viewModel.toggleRepeat() },
-                    modifier = Modifier.size(48.dp)
+                    modifier = Modifier.size(if (isCompactScreen) 40.dp else 48.dp)
                 ) {
                     val (icon, tint) = when (repeatMode) {
-                        // The Player object is now recognized because of the import.
                         Player.REPEAT_MODE_ALL -> Icons.Default.Repeat to AppOrange
                         Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne to AppOrange
                         else -> Icons.Default.Repeat to AppTextSecondary
@@ -316,12 +354,16 @@ fun NowPlayingScreen(
                         icon,
                         contentDescription = "Repeat",
                         tint = tint,
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(if (isCompactScreen) 20.dp else 24.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            if (!isCompactScreen) {
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }

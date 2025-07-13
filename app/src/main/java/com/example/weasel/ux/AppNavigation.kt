@@ -19,7 +19,8 @@ fun AppNavigation(
     libraryViewModel: LibraryViewModel,
     playerViewModel: MusicPlayerViewModel,
     contentPadding: PaddingValues,
-
+    hasNewmessage: Boolean,
+    onmessageClick: () -> Unit,
     onDownloadQueueClick: () -> Unit
 
 ) {
@@ -53,6 +54,8 @@ fun AppNavigation(
                 },
                 onSettingsClick = onSettingsClick,
                 onDownloadQueueClick = onDownloadQueueClick,
+                hasNewmessage = hasNewmessage,
+                onmessageClick = onmessageClick,
                 contentPadding = contentPadding
             )
         }
@@ -65,7 +68,9 @@ fun AppNavigation(
                 onTrackClick = { track -> playerViewModel.playTrack(navController.context, track, searchResults) },
                 onSettingsClick = onSettingsClick,
                 contentPadding = contentPadding,
-                onDownloadQueueClick = onDownloadQueueClick
+                onDownloadQueueClick = onDownloadQueueClick,
+                hasNewmessage = hasNewmessage,
+                onmessageClick = onmessageClick,
                 )
         }
 

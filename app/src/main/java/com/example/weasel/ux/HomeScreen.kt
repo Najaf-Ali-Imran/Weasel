@@ -35,7 +35,9 @@ fun HomeScreen(
     onArtistClick: (String) -> Unit,
     onSettingsClick: () -> Unit,
     contentPadding: PaddingValues,
-    onDownloadQueueClick: () -> Unit
+    onDownloadQueueClick: () -> Unit,
+    hasNewmessage: Boolean,
+    onmessageClick: () -> Unit,
     ) {
     val recentHistory by libraryViewModel.history.collectAsState()
     val downloadQueue by libraryViewModel.downloadQueue.collectAsState()
@@ -52,9 +54,11 @@ fun HomeScreen(
                 title = "Welcome back!",
                 onSettingsClick = onSettingsClick,
                 downloadQueueSize = downloadQueue.size,
-                onDownloadQueueClick = onDownloadQueueClick
+                onDownloadQueueClick = onDownloadQueueClick,
+                hasNewmessage = hasNewmessage,
+                onmessageClick = onmessageClick
 
-            )
+                )
             Spacer(modifier = Modifier.height(12.dp))
         }
 

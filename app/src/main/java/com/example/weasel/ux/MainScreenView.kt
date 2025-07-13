@@ -22,7 +22,10 @@ import com.example.weasel.viewmodel.LibraryViewModel
 import com.example.weasel.viewmodel.MusicPlayerViewModel
 import com.example.weasel.viewmodel.SearchViewModel
 import kotlinx.coroutines.launch
-
+import com.example.weasel.viewmodel.MessageViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.weasel.MainActivity
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,17 +33,26 @@ fun MainScreenView(
     homeViewModel: HomeViewModel,
     searchViewModel: SearchViewModel,
     libraryViewModel: LibraryViewModel,
-    playerViewModel: MusicPlayerViewModel
+    playerViewModel: MusicPlayerViewModel,
+    hasNewmessage: Boolean,
+    onmessageClick: () -> Unit
 
 ) {
     var showDownloadQueueDialog by remember { mutableStateOf(false) }
     val downloadQueue by libraryViewModel.downloadQueue.collectAsState()
+    val messageViewModel: MessageViewModel = viewModel(factory = (LocalContext.current as MainActivity).viewModelFactory)
 
     val navController = rememberNavController()
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var showBottomSheet by remember { mutableStateOf(false) }
+    var showMessageDialog by remember { mutableStateOf(false) }
+    val message by messageViewModel.message.collectAsState()
+    val hasMessage = message?.text?.isNotBlank() == true
 
+    if (showMessageDialog && message != null) {
+        MessageDialog(message = message!!, onDismiss = { showMessageDialog = false })
+    }
     val currentTrack = playerViewModel.currentTrack
 
     LaunchedEffect(Unit) {
@@ -100,9 +112,13 @@ fun MainScreenView(
                 playerViewModel = playerViewModel,
                 contentPadding = innerPadding,
 
-                onDownloadQueueClick = { showDownloadQueueDialog = true }
+                onDownloadQueueClick = { showDownloadQueueDialog = true },
 
-            )
+                hasNewmessage = hasNewmessage,
+                onmessageClick = onmessageClick
+
+
+                )
 
             Box(
                 modifier = Modifier

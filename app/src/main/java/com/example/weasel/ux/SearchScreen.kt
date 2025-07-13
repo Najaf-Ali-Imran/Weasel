@@ -41,8 +41,9 @@ fun SearchScreen(
     onTrackClick: (Track) -> Unit,
     contentPadding: PaddingValues,
     onSettingsClick: () -> Unit,
-    onDownloadQueueClick: () -> Unit
-
+    onDownloadQueueClick: () -> Unit,
+    hasNewmessage: Boolean,
+    onmessageClick: () -> Unit
 
 ) {
     val downloadQueue by libraryViewModel.downloadQueue.collectAsState()
@@ -58,8 +59,11 @@ fun SearchScreen(
             title = "Search",
             onSettingsClick = onSettingsClick,
             downloadQueueSize = downloadQueue.size,
-            onDownloadQueueClick = onDownloadQueueClick
-        )
+            onDownloadQueueClick = onDownloadQueueClick,
+            hasNewmessage = hasNewmessage,
+            onmessageClick = onmessageClick
+
+            )
         Surface(
             modifier = Modifier.fillMaxWidth(),
             color = MaterialTheme.colorScheme.background

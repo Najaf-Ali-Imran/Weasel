@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp") version "2.0.0-1.0.24"
+    id("com.google.gms.google-services")
+
 }
 
 android {
@@ -14,7 +16,7 @@ android {
         minSdk = 24
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = "0.1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -35,7 +37,10 @@ android {
         // Kotlin‑DSL setter for core library desugaring
         isCoreLibraryDesugaringEnabled = true
     }
-
+    lint {
+        checkReleaseBuilds = true
+        abortOnError = false
+    }
     kotlinOptions {
         // Match Java compatibility
         jvmTarget = "1.8"
@@ -74,6 +79,11 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.7.1")
     implementation("androidx.media3:media3-session:1.7.1")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
+
+
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
+    implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-database-ktx")
 
     // Coil image loading
     implementation("io.coil-kt:coil-compose:2.6.0")

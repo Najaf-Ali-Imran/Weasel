@@ -32,16 +32,27 @@ fun WeaselTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
+            val windowInsetsController = WindowCompat.getInsetsController(window, view)
 
-            window.statusBarColor = Color.Transparent.toArgb()
-            window.navigationBarColor = Color.Transparent.toArgb()
+            // Use WindowCompat.setDecorFitsSystemWindows for better compatibility
+            WindowCompat.setDecorFitsSystemWindows(window, false)
 
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
-
+            // Set status bar and navigation bar to transparent
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                window.setDecorFitsSystemWindows(false)
+                window.statusBarColor = Color.Transparent.toArgb()
+                window.navigationBarColor = Color.Transparent.toArgb()
                 window.isNavigationBarContrastEnforced = false
+            } else {
+                @Suppress("DEPRECATION")
+                window.statusBarColor = Color.Transparent.toArgb()
+                @Suppress("DEPRECATION")
+                window.navigationBarColor = Color.Transparent.toArgb()
             }
+
+            // Set light/dark status bars
+            windowInsetsController.isAppearanceLightStatusBars = false
+            windowInsetsController.isAppearanceLightNavigationBars = false
         }
     }
 

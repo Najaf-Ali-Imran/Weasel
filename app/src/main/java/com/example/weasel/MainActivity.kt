@@ -11,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,10 +28,8 @@ import com.example.weasel.ui.theme.WeaselTheme
 import com.example.weasel.util.AppConnectivityManager
 import com.example.weasel.ux.BetaDisclaimerDialog
 import com.example.weasel.ux.MainScreenView
-import com.example.weasel.viewmodel.HomeViewModel
-import com.example.weasel.viewmodel.LibraryViewModel
-import com.example.weasel.viewmodel.MusicPlayerViewModel
-import com.example.weasel.viewmodel.SearchViewModel
+import com.example.weasel.ux.MessageDialog
+import com.example.weasel.viewmodel.*
 
 
 class MainActivity : ComponentActivity() {
@@ -44,6 +43,9 @@ class MainActivity : ComponentActivity() {
         ViewModelFactory(musicRepository, localRepository, connectivityManager, application)
     }
 
+    // FIX 1: The MessageViewModel should be instantiated here, just like the others.
+    private val messageViewModel: MessageViewModel by viewModels { viewModelFactory }
+
     private val homeViewModel: HomeViewModel by viewModels { viewModelFactory }
     private val searchViewModel: SearchViewModel by viewModels { viewModelFactory }
     private val libraryViewModel: LibraryViewModel by viewModels { viewModelFactory }
@@ -54,7 +56,7 @@ class MainActivity : ComponentActivity() {
             if (isGranted) {
                 libraryViewModel.loadLocalSongs()
             } else {
-                // TODO: Handle permission denial by showing a message.
+                // TODO: Handle permission denial.
             }
         }
 
@@ -66,9 +68,7 @@ class MainActivity : ComponentActivity() {
         }
 
         super.onCreate(savedInstanceState)
-
         WindowCompat.setDecorFitsSystemWindows(window, false)
-
         askForPermissions()
 
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
@@ -81,12 +81,18 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     var showDisclaimer by remember { mutableStateOf(isFirstLaunch) }
+                    var showMessageDialog by remember { mutableStateOf(false) }
+
+                    val message by messageViewModel.message.collectAsState()
+                    val hasMessage = message?.text?.isNotBlank() == true
 
                     MainScreenView(
                         homeViewModel = homeViewModel,
                         searchViewModel = searchViewModel,
                         libraryViewModel = libraryViewModel,
-                        playerViewModel = playerViewModel
+                        playerViewModel = playerViewModel,
+                        hasNewmessage = hasMessage,
+                        onmessageClick = { showMessageDialog = true }
                     )
 
                     if (showDisclaimer) {
@@ -95,6 +101,13 @@ class MainActivity : ComponentActivity() {
                                 showDisclaimer = false
                                 prefs.edit().putBoolean("is_first_launch", false).apply()
                             }
+                        )
+                    }
+
+                    if (showMessageDialog && message != null) {
+                        MessageDialog(
+                            message = message!!,
+                            onDismiss = { showMessageDialog = false }
                         )
                     }
                 }
