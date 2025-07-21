@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
@@ -22,6 +21,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.weasel.data.Track
 import com.example.weasel.viewmodel.LibraryViewModel
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cancel
 
 private enum class DownloadSortOrder {
     DEFAULT, A_TO_Z, ARTIST;
@@ -40,10 +43,13 @@ private enum class DownloadSortOrder {
 fun DownloadsScreen(
     libraryViewModel: LibraryViewModel,
     onTrackClick: (Track, List<Track>) -> Unit,
-    onNavigateUp: () -> Unit,
+    onAddToPlaylist: (List<String>) -> Unit,
+    onNavigateUp: () -> Unit
 ) {
     val downloadedTracks by libraryViewModel.downloadedTracks.collectAsState()
     var sortOrder by remember { mutableStateOf(DownloadSortOrder.DEFAULT) }
+    val selectedTrackIds = remember { mutableStateListOf<String>() }
+    val isInSelectionMode = selectedTrackIds.isNotEmpty()
 
     val sortedTracks = remember(downloadedTracks, sortOrder) {
         when (sortOrder) {
@@ -56,14 +62,36 @@ fun DownloadsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Downloads") },
+                title = {
+                    if (isInSelectionMode) Text("${selectedTrackIds.size} selected")
+                    else Text("Downloads")
+                },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateUp) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    val icon = if (isInSelectionMode) Icons.Default.Cancel else Icons.AutoMirrored.Filled.ArrowBack
+                    IconButton(onClick = {
+                        if (isInSelectionMode) selectedTrackIds.clear() else onNavigateUp()
+                    }) {
+                        Icon(icon, contentDescription = if (isInSelectionMode) "Cancel" else "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
+        },
+
+        floatingActionButton = {
+            if (isInSelectionMode) {
+                ExtendedFloatingActionButton(
+                    text = { Text("Add to Playlist") },
+                    icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                    onClick = {
+                        onAddToPlaylist(selectedTrackIds.toList())
+                        selectedTrackIds.clear()
+                    },
+                    modifier = Modifier
+                        .padding(bottom = 72.dp)
+                        .navigationBarsPadding()
+                )
+            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -106,21 +134,43 @@ fun DownloadsScreen(
                 }
             } else {
                 items(items = sortedTracks, key = { it.id }) { track ->
-                    TrackListItem(
-                        track = track,
-                        onTrackClicked = { clickedTrack ->
-                            onTrackClick(clickedTrack, sortedTracks)
+                    val isSelected = track.id in selectedTrackIds
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    if (isInSelectionMode) {
+                                        if (isSelected) selectedTrackIds.remove(track.id) else selectedTrackIds.add(track.id)
+                                    } else {
+                                        onTrackClick(track, sortedTracks)
+                                    }
+                                },
+                                onLongClick = {
+                                    if (!isSelected) selectedTrackIds.add(track.id)
+                                }
+                            ),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (isInSelectionMode) {
+                            Checkbox(
+                                checked = isSelected,
+                                onCheckedChange = {
+                                    if (it) selectedTrackIds.add(track.id) else selectedTrackIds.remove(track.id)
+                                },
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
                         }
-                    )
+                        TrackListItem(track = track, onTrackClicked = {}, isClickable = false)
+                    }
                 }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(150.dp))
-            }
+            item { Spacer(modifier = Modifier.height(150.dp)) }
         }
     }
 }
+
 
 
 @Composable

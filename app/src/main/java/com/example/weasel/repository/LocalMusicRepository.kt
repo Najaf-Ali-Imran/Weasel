@@ -3,6 +3,8 @@ package com.example.weasel.repository
 import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.os.Environment
 import android.provider.MediaStore
 import androidx.room.Transaction
 import com.example.weasel.data.Playlist
@@ -13,8 +15,11 @@ import com.example.weasel.data.HistoryTrack
 import com.example.weasel.data.local.HistoryEntry
 import com.example.weasel.data.local.MusicDao
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import java.io.File
+
 class LocalMusicRepository(private val musicDao: MusicDao, private val context: Context) {
 
     fun getHistory(): Flow<List<HistoryEntry>> = musicDao.getHistoryWithTimestamp()
@@ -56,7 +61,7 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
         musicDao.insertTrack(track)
     }
 
-//    @Transaction
+    //    @Transaction
 //    suspend fun addTracksToPlaylist(playlistId: Long, tracks: List<String>) {
 //        musicDao.insertTracks(tracks)
 //
@@ -88,6 +93,8 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
     }
 
     suspend fun getLocalAudioFiles(): List<Track> = withContext(Dispatchers.IO) {
+        val downloadedTrackUris = musicDao.getDownloadedTracks().first().mapNotNull { it.localPath }
+
         val localTracks = mutableListOf<Track>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -95,6 +102,7 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
             MediaStore.Audio.Media.ARTIST,
             MediaStore.Audio.Media.ALBUM_ID
         )
+
         val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
         val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
 
@@ -112,27 +120,30 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
 
             while (cursor.moveToNext()) {
                 val id = cursor.getLong(idColumn)
-                val title = cursor.getString(titleColumn)
-                val artist = cursor.getString(artistColumn)
-                val albumId = cursor.getLong(albumIdColumn)
-
                 val contentUri: Uri = ContentUris.withAppendedId(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     id
                 )
-                val artworkUri: Uri = ContentUris.withAppendedId(
-                    Uri.parse("content://media/external/audio/albumart"),
-                    albumId
-                )
 
-                localTracks.add(
-                    Track(
-                        id = contentUri.toString(),
-                        title = title,
-                        artist = artist ?: "Unknown Artist",
-                        thumbnailUrl = artworkUri.toString()
+                if (contentUri.toString() !in downloadedTrackUris) {
+                    val title = cursor.getString(titleColumn)
+                    val artist = cursor.getString(artistColumn)
+                    val albumId = cursor.getLong(albumIdColumn)
+
+                    val artworkUri: Uri = ContentUris.withAppendedId(
+                        Uri.parse("content://media/external/audio/albumart"),
+                        albumId
                     )
-                )
+
+                    localTracks.add(
+                        Track(
+                            id = contentUri.toString(),
+                            title = title,
+                            artist = artist ?: "Unknown Artist",
+                            thumbnailUrl = artworkUri.toString()
+                        )
+                    )
+                }
             }
         }
         return@withContext localTracks

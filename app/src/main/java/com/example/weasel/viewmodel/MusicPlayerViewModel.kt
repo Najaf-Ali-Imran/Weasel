@@ -125,14 +125,10 @@ class MusicPlayerViewModel(
         currentTrack = track
         playlist = trackList.toMutableList()
         localMusicRepository.addToHistory(track)
+
         initializePlayer(context)
 
-        val trackAudioUrl = when {
-            track.isDownloaded && track.localPath != null && File(track.localPath).exists() -> track.localPath
-            track.id.startsWith("content://") -> track.id
-            audioUrlCache.containsKey(track.id) -> audioUrlCache[track.id]!!
-            else -> musicRepository.getAudioStreamUrl(track.id).getOrNull() ?: ""
-        }
+        val trackAudioUrl = getAudioUrlForTrack(track)
 
         if (trackAudioUrl.isEmpty()) {
             isBuffering = false
@@ -142,6 +138,7 @@ class MusicPlayerViewModel(
         audioUrlCache[track.id] = trackAudioUrl
 
         val firstMediaItem = createMediaItem(track, trackAudioUrl)
+        mediaController?.clearMediaItems()
         mediaController?.setMediaItem(firstMediaItem)
         mediaController?.prepare()
         mediaController?.play()
@@ -168,18 +165,12 @@ class MusicPlayerViewModel(
         val subsequentTracks = trackList.filter { it.id != currentTrack.id }
 
         subsequentTracks.forEach { track ->
-            if (!audioUrlCache.containsKey(track.id)) {
-                val audioUrl = when {
-                    track.isDownloaded && track.localPath != null && File(track.localPath).exists() -> track.localPath
-                    track.id.startsWith("content://") -> track.id
-                    else -> musicRepository.getAudioStreamUrl(track.id).getOrNull() ?: ""
-                }
-
-                if (audioUrl.isNotEmpty()) {
-                    audioUrlCache[track.id] = audioUrl
-                    val mediaItem = createMediaItem(track, audioUrl)
-                    mediaController?.addMediaItem(mediaItem)
-                }
+            // Use the corrected helper function here too
+            val audioUrl = getAudioUrlForTrack(track)
+            if (audioUrl.isNotEmpty() && !audioUrlCache.containsKey(track.id)) {
+                audioUrlCache[track.id] = audioUrl
+                val mediaItem = createMediaItem(track, audioUrl)
+                mediaController?.addMediaItem(mediaItem)
             }
         }
     }
@@ -233,7 +224,7 @@ class MusicPlayerViewModel(
                 if (currentContextType == ContextType.SINGLE_SONG) {
                     repeat(tracksToLoad.size) {
                         if (relatedTracksCache.isNotEmpty()) {
-                            relatedTracksCache.removeFirst()
+                            relatedTracksCache.removeAt(0)
                         }
                     }
                 }
@@ -371,12 +362,17 @@ class MusicPlayerViewModel(
 
     private suspend fun getAudioUrlForTrack(track: Track): String {
         return when {
-            track.isDownloaded && track.localPath != null && File(track.localPath).exists() -> track.localPath
+            track.isDownloaded && !track.localPath.isNullOrBlank() -> track.localPath
+
             track.id.startsWith("content://") -> track.id
+
             audioUrlCache.containsKey(track.id) -> audioUrlCache[track.id]!!
+
             else -> {
                 val url = musicRepository.getAudioStreamUrl(track.id).getOrNull() ?: ""
-                if (url.isNotEmpty()) audioUrlCache[track.id] = url
+                if (url.isNotEmpty()) {
+                    audioUrlCache[track.id] = url
+                }
                 url
             }
         }

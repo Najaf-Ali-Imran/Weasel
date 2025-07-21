@@ -218,8 +218,8 @@ fun PlaylistDetailScreen(
             } else {
                 items(items = playlistTracks, key = { it.id }) { track ->
                     val isSelected = track.id in selectedTrackIds
-                    val isPlayable = track.isDownloaded || isOnline
-
+                    val isPlayableOffline = track.isDownloaded || track.id.startsWith("content://")
+                    val isPlayable = isPlayableOffline || isOnline
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()

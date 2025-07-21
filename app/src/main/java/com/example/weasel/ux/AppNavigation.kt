@@ -107,7 +107,11 @@ fun AppNavigation(
                 onTrackClick = { clickedTrack, playlist ->
                     playerViewModel.playTrack(navController.context, clickedTrack, playlist)
                 },
-                onNavigateUp = { navController.popBackStack() }
+                onNavigateUp = { navController.popBackStack() },
+                onAddToPlaylist = { trackIds ->
+                    tracksToAdd = trackIds
+                    showAddToPlaylistDialog = true
+                }
             )
         }
 

@@ -84,6 +84,10 @@ class LibraryViewModel(
 
     fun downloadTrack(track: Track) {
         if (!track.isDownloaded) {
+            viewModelScope.launch {
+                localMusicRepository.insertTrack(track)
+            }
+
             val data = workDataOf(
                 DownloadWorker.KEY_TRACK_ID to track.id,
                 DownloadWorker.KEY_TRACK_TITLE to track.title,

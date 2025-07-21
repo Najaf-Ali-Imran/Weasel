@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.example.weasel.data.Playlist
+import com.example.weasel.data.Track
 import com.example.weasel.viewmodel.LibraryViewModel
 import com.example.weasel.viewmodel.MusicPlayerViewModel
 import com.kmpalette.rememberPaletteState
@@ -66,6 +67,7 @@ fun NowPlayingScreen(
     val onSurfaceColor = MaterialTheme.colorScheme.onSurface
     val fallbackSurface = MaterialTheme.colorScheme.surface
     val fallbackOnSurface = MaterialTheme.colorScheme.onSurface
+    var showTrackOptionsMenu by remember { mutableStateOf(false) }
 
     // Local UI State
     val paletteState = rememberPaletteState()
@@ -121,7 +123,18 @@ fun NowPlayingScreen(
         }
     }
 
-
+    if (showTrackOptionsMenu) {
+        NowPlayingOptionsMenu(
+            track = currentTrack,
+            onDismiss = { showTrackOptionsMenu = false },
+            onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+            onLikeClick = { libraryViewModel.addTrackToLikedSongs(it) },
+            onDownloadClick = {
+                viewModel.downloadCurrentTrack(context)
+                Toast.makeText(context, "Downloading started.", Toast.LENGTH_SHORT).show()
+            },
+        )
+    }
     if (showAddToPlaylistDialog) {
         val playlists by libraryViewModel.userPlaylists.collectAsState()
         AddToPlaylistDialog(
@@ -162,11 +175,8 @@ fun NowPlayingScreen(
         ) {
             PlayerTopBar(
                 onBackClick = onBackClick,
-                onAddToPlaylistClick = { showAddToPlaylistDialog = true },
-                onDownloadClick = {
-                    viewModel.downloadCurrentTrack(context)
-                    Toast.makeText(context, "Downloading started.", Toast.LENGTH_SHORT).show()
-                }
+                onMoreClick = { showTrackOptionsMenu = true }
+
             )
 
             Column(
@@ -228,8 +238,7 @@ fun NowPlayingScreen(
 @Composable
 fun PlayerTopBar(
     onBackClick: () -> Unit,
-    onAddToPlaylistClick: () -> Unit,
-    onDownloadClick: () -> Unit
+    onMoreClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -243,17 +252,53 @@ fun PlayerTopBar(
         }
         Text("Now Playing", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Row {
-            IconButton(onClick = onAddToPlaylistClick) {
-                Icon(Icons.Default.Add, contentDescription = "Add to Playlist")
-            }
-            IconButton(onClick = onDownloadClick) {
-                Icon(Icons.Default.Download, contentDescription = "Download")
+            IconButton(onClick = onMoreClick) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More Options")
             }
         }
     }
 }
 
-
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NowPlayingOptionsMenu(
+    track: Track,
+    onDismiss: () -> Unit,
+    onAddToPlaylistClick: () -> Unit,
+    onLikeClick: (Track) -> Unit,
+    onDownloadClick: () -> Unit,
+    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.padding(bottom = 32.dp)) {
+            Text(
+                text = track.title,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            HorizontalDivider()
+            BottomSheetListItem(
+                icon = Icons.Default.Favorite,
+                text = "Like Song",
+                onClick = { onLikeClick(track); onDismiss() }
+            )
+            BottomSheetListItem(
+                icon = Icons.Default.Download,
+                text = "Download",
+                onClick = {
+                    onDownloadClick()
+                    onDismiss()
+                }
+            )
+            BottomSheetListItem(
+                icon = Icons.Default.PlaylistAdd,
+                text = "Add to Playlist",
+                onClick = { onAddToPlaylistClick(); onDismiss() }
+            )
+        }
+    }
+}
 
 @Composable
 fun PlayerControls(viewModel: MusicPlayerViewModel, sliderColor: Color) {
@@ -337,9 +382,12 @@ private fun formatTime(timeMs: Long): String {
 }
 
 private fun getHighQualityYouTubeThumbnail(url: String?): String? {
-    if (url.isNullOrEmpty() || !url.contains("ytimg.com/vi/")) {
+    if (url.isNullOrEmpty() || url.startsWith("content://")) {
         return url
     }
-    val videoId = url.substringAfter("/vi/").substringBefore("/")
-    return "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+    if (url.contains("ytimg.com/vi/")) {
+        val videoId = url.substringAfter("/vi/").substringBefore("/")
+        return "https://i.ytimg.com/vi/$videoId/maxresdefault.jpg"
+    }
+    return url
 }
