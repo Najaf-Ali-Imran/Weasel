@@ -135,14 +135,8 @@ Weasel follows a scalable, maintainable architecture pattern with clear separati
 
 ## 📋 Releases
 
-<<<<<<< HEAD
 ### 🎯 v0.1.2-beta - 
 **Released**: 7-21-2025
-=======
-### 🎯 v0.1.1-beta - *Initial Beta Release*
-**Released**: 7-12-2025
->>>>>>> origin/master
-
 **What's New:**
 - ✅ Light/Dark Mode
 - ✅ Enhanced Performance
