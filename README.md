@@ -7,7 +7,7 @@
   [![Kotlin](https://img.shields.io/badge/Language-Kotlin-purple.svg)](https://kotlinlang.org)
   [![Jetpack Compose](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)](https://developer.android.com/jetpack/compose)
   [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-  [![Version](https://img.shields.io/badge/Version-0.1.1--beta-orange.svg)](https://github.com/Najaf-Ali-Imran/weasel/releases)
+  [![Version](https://img.shields.io/badge/Version-0.1.0--beta-orange.svg)](https://github.com/Najaf-Ali-Imran/weasel/releases)
 </div>
 
 <p align="center">
@@ -19,28 +19,36 @@
 </p>
 
 <div align="center">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107867/2_huydy2.png" alt="Weasel Home Screen" width="250">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107867/1_iusxhs.png" alt="Weasel Player Screen" width="250">
+  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332256/WhatsApp_Image_2025-07-12_at_7.53.55_PM_odrnlx.jpg" alt="Weasel Home Screen" width="250">
+  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1752332256/WhatsApp_Image_2025-07-12_at_7.53.56_PM_jbzann.jpg" alt="Weasel Player Screen" width="250">
 </div>
-<div align="center">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107858/2_wnp4fh.png" alt="Weasel Home Screen" width="250">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107858/1_pgwllm.png" alt="Weasel Player Screen" width="250">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107857/3_oa0l0k.png" alt="Weasel Player Screen" width="250">
-</div>
-
 
 ---
 
 ## ✨ Features
 
+### 🎧 Core Playback & Streaming
 - **🔍 Instant Search**: Lightning-fast search across tracks, artists, and playlists
 - **🎵 High-Quality Streaming**: Automatically fetches the best available audio streams
 - **🔄 Background Playback**: Seamless background audio with rich media notifications
 - **🎚️ Endless Queue**: Smart auto-queuing of related tracks for continuous discovery
+
+### 📚 Library Management
 - **💾 Local Music Integration**: Automatic scanning and integration of device audio files
 - **📝 Playlist Creation**: Create and manage custom playlists effortlessly
+- **➕ Easy Track Addition**: Add any track—streamed or local—to your playlists
+- **🕐 Listening History**: Comprehensive playback history accessible from Home and Settings
+
+### 📱 Offline Experience
 - **⬇️ Download Functionality**: Download any track for offline enjoyment
-- **✨ Material 3 Theme**: Tailored for modern Android experiences**: 
+- **🔧 Robust Download Manager**: Background downloads with progress tracking via WorkManager
+- **🧠 Smart Offline Playback**: Automatic local file playback to save mobile data
+- **📵 Offline UI Adaptation**: Intelligent UI that adapts when offline, showing available content
+
+### 🎨 Modern UI & UX
+- **🏗️ Jetpack Compose**: Fully declarative, modern UI toolkit for responsive design
+- **🎭 Themed Interface**: Clean, visually appealing design with consistent theming
+- **✨ Polished Animations**: Custom zoom animations and smooth transitions
 
 ---
 
@@ -135,15 +143,16 @@ Weasel follows a scalable, maintainable architecture pattern with clear separati
 
 ## 📋 Releases
 
-### 🎯 v0.1.2-beta - 
-**Released**: 7-21-2025
+### 🎯 v0.1.0-beta - *Initial Beta Release*
+**Released**: 7-12-2025
 
 **What's New:**
-- ✅ Light/Dark Mode
-- ✅ Enhanced Performance
-- ✅ Improved Library
+- ✅ Complete core functionality implementation
+- ✅ All features listed above fully functional
+- ✅ Stable foundation for user testing
+- 🎯 Focus on gathering user feedback and bug reports
 
-**Download:** [v0.1.2](https://github.com/Najaf-Ali-Imran/Weasel/releases/tag/v0.1.0)
+**Download:** [v0.1.0](https://github.com/Najaf-Ali-Imran/Weasel/releases/tag/v0.1.0)
 
 ---
 
