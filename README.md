@@ -19,7 +19,7 @@
 </p>
 
 <div align="center">
-  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107867/2_huydy2.png" alt="Weasel Home Screen" width="250">
+  <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753108576/Light_iaveum.png" alt="Weasel Home Screen" width="250">
   <img src="https://res.cloudinary.com/dniybrzfx/image/upload/v1753107867/1_iusxhs.png" alt="Weasel Player Screen" width="250">
 </div>
 <div align="center">
