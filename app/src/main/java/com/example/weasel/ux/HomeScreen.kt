@@ -1,7 +1,6 @@
+
 package com.example.weasel.ux
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,18 +13,25 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.weasel.data.Artist
 import com.example.weasel.data.Track
-import com.example.weasel.ui.resources.AppIcons
+import com.example.weasel.viewmodel.HomeUiState
 import com.example.weasel.viewmodel.HomeViewModel
 import com.example.weasel.viewmodel.LibraryViewModel
+
+private val sampleArtists = listOf(
+    Artist("1", "The Marías", "https://i.scdn.co/image/ab6761610000e5ebaf586afa2b397f1288683a76"),
+    Artist("2", "Sombr", "https://i.scdn.co/image/ab6761610000e5eb2550006e2746e5af5b2e0545"),
+    Artist("3", "Shreya Ghoshal", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScClBVIC8BHMoit9z4dS9o301fLPel4BIIKg&s"),
+    Artist("4", "Maanu", "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/d9/67/27/d9672700-443b-c203-cad4-a2b940f5f29d/file_cropped.png/486x486bb.png"),
+    Artist("5", "Atif Aslam", "https://i.scdn.co/image/ab6761610000e5ebc40600e02356cc86f0debe84"),
+    Artist("6", "Annural Khalid", "https://i.scdn.co/image/ab6761610000e5eb7deec477c1cfd536cc291464")
+)
 
 @Composable
 fun HomeScreen(
@@ -38,27 +44,28 @@ fun HomeScreen(
     onDownloadQueueClick: () -> Unit,
     hasNewmessage: Boolean,
     onmessageClick: () -> Unit,
-    ) {
+) {
+    val homeState = homeViewModel.uiState
     val recentHistory by libraryViewModel.history.collectAsState()
     val downloadQueue by libraryViewModel.downloadQueue.collectAsState()
     val isOnline by homeViewModel.isOnline.collectAsState()
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = contentPadding
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding(),
+            bottom = contentPadding.calculateBottomPadding() + 88.dp
+        )
     ) {
         item {
             TopBar(
-                title = "Welcome back!",
+                title = "Weasel",
                 onSettingsClick = onSettingsClick,
                 downloadQueueSize = downloadQueue.size,
                 onDownloadQueueClick = onDownloadQueueClick,
                 hasNewmessage = hasNewmessage,
                 onmessageClick = onmessageClick
-
-                )
+            )
             Spacer(modifier = Modifier.height(12.dp))
         }
 
@@ -89,8 +96,12 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(homeViewModel.popularThisWeek) { track ->
-                        TrendingCard(track = track, onCardClick = { onTrackClick(track) })
+                    when (homeState) {
+                        is HomeUiState.Loading -> items(5) { SkeletonTrendingCard() }
+                        is HomeUiState.Success -> items(homeState.popularThisWeek) { track ->
+                            TrendingCard(track = track, onCardClick = { onTrackClick(track) })
+                        }
+                        is HomeUiState.Error -> { /* Optionally show an error item */ }
                     }
                 }
                 Spacer(modifier = Modifier.height(24.dp))
@@ -103,7 +114,7 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(getSampleArtists()) { artist ->
+                    items(sampleArtists) { artist ->
                         ArtistCard(artist = artist, onArtistClick = onArtistClick)
                     }
                 }
@@ -121,18 +132,20 @@ fun HomeScreen(
             }
         }
 
-        if (isOnline && homeViewModel.topSongsGlobal.isNotEmpty()) {
+        if (isOnline) {
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 SectionHeader("Quick Picks")
                 Spacer(modifier = Modifier.height(12.dp))
             }
-            items(homeViewModel.topSongsGlobal) { track ->
-                QuickPickItem(track = track, onTrackClick = { onTrackClick(track) })
+            when (homeState) {
+                is HomeUiState.Loading -> items(5) { SkeletonQuickPickItem() }
+                is HomeUiState.Success -> items(homeState.topSongsGlobal) { track ->
+                    QuickPickItem(track = track, onTrackClick = { onTrackClick(track) })
+                }
+                is HomeUiState.Error -> { /* Optionally show an error item */ }
             }
-        }
 
-        if (isOnline && homeViewModel.newReleases.isNotEmpty()) {
             item {
                 Spacer(modifier = Modifier.height(24.dp))
                 SectionHeader("Made For You")
@@ -141,8 +154,12 @@ fun HomeScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(homeViewModel.newReleases) { track ->
-                        MadeForYouCard(track = track, onCardClick = { onTrackClick(track) })
+                    when (homeState) {
+                        is HomeUiState.Loading -> items(4) { SkeletonTrendingCard() } // Reuse a similar skeleton
+                        is HomeUiState.Success -> items(homeState.newReleases) { track ->
+                            MadeForYouCard(track = track, onCardClick = { onTrackClick(track) })
+                        }
+                        is HomeUiState.Error -> { /* Optionally show an error item */ }
                     }
                 }
             }
@@ -293,13 +310,3 @@ private fun MadeForYouCard(track: Track, onCardClick: () -> Unit) {
     }
 }
 
-private fun getSampleArtists(): List<Artist> {
-    return listOf(
-        Artist("1", "The Marías", "https://i.scdn.co/image/ab6761610000e5ebaf586afa2b397f1288683a76"),
-        Artist("2", "Sombr", "https://i.scdn.co/image/ab6761610000e5eb2550006e2746e5af5b2e0545"),
-        Artist("3", "Shreya Ghoshal", "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcScClBVIC8BHMoit9z4dS9o301fLPel4BIIKg&s"),
-        Artist("4", "Maanu", "https://is1-ssl.mzstatic.com/image/thumb/AMCArtistImages221/v4/d9/67/27/d9672700-443b-c203-cad4-a2b940f5f29d/file_cropped.png/486x486bb.png"),
-        Artist("5", "Atif Aslam", "https://i.scdn.co/image/ab6761610000e5ebc40600e02356cc86f0debe84"),
-        Artist("6", "Annural Khalid", "https://i.scdn.co/image/ab6761610000e5eb7deec477c1cfd536cc291464")
-    )
-}

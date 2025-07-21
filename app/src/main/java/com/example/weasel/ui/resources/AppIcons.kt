@@ -3,7 +3,6 @@ package com.example.weasel.ui.resources
 import com.example.weasel.R
 
 object AppIcons {
-    val Person = R.drawable.ic_person
     val Settings = R.drawable.ic_settings
     val Play = R.drawable.ic_play
     val Pause = R.drawable.ic_pause

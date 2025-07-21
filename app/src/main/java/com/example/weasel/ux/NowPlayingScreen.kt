@@ -1,11 +1,21 @@
 package com.example.weasel.ux
 
+import android.R.attr.track
 import android.widget.Toast
+import androidx.compose.animation.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -18,6 +28,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
@@ -27,348 +38,298 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
-import com.example.weasel.MainActivity
-import com.example.weasel.ui.theme.*
+import com.example.weasel.data.Playlist
 import com.example.weasel.viewmodel.LibraryViewModel
 import com.example.weasel.viewmodel.MusicPlayerViewModel
+import com.kmpalette.rememberPaletteState
+import kotlinx.coroutines.launch
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingScreen(
     viewModel: MusicPlayerViewModel,
+    libraryViewModel: LibraryViewModel,
     onBackClick: () -> Unit
 ) {
-    val libraryViewModel: LibraryViewModel = viewModel(factory = (LocalContext.current as MainActivity).viewModelFactory)
+    val context = LocalContext.current
 
-    val currentTrack = viewModel.currentTrack
+    val currentTrack = viewModel.currentTrack ?: return
     val isPlaying = viewModel.isPlaying
     val currentPosition = viewModel.currentPosition
     val duration = viewModel.duration
     val isShuffleEnabled = viewModel.isShuffleEnabled
     val repeatMode = viewModel.repeatMode
-    val isBuffering = viewModel.isBuffering
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val onSurfaceColor = MaterialTheme.colorScheme.onSurface
+    val fallbackSurface = MaterialTheme.colorScheme.surface
+    val fallbackOnSurface = MaterialTheme.colorScheme.onSurface
 
-    val playlists by libraryViewModel.playlists.collectAsState()
+    // Local UI State
+    val paletteState = rememberPaletteState()
+    val dominantColor = remember {
+        Animatable(surfaceColor)
+    }
+    val onDominantColor = remember {
+        Animatable(onSurfaceColor)
+    }
+
+    LaunchedEffect(surfaceColor) {
+        dominantColor.snapTo(surfaceColor)
+    }
+    LaunchedEffect(onSurfaceColor) {
+        onDominantColor.snapTo(onSurfaceColor)
+    }
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
 
     val track = currentTrack ?: return
 
     val highQualityThumbnailUrl = getHighQualityYouTubeThumbnail(track.thumbnailUrl)
 
-    // Get screen configuration for responsive design
-    val configuration = LocalConfiguration.current
-    val screenHeight = configuration.screenHeightDp.dp
-    val screenWidth = configuration.screenWidthDp.dp
-    val isCompactScreen = screenHeight < 700.dp
-    val isSmallScreen = screenWidth < 400.dp
+
+    LaunchedEffect(currentTrack.thumbnailUrl) {
+        val imageLoader = coil.ImageLoader(context)
+        val request = coil.request.ImageRequest.Builder(context)
+            .data(currentTrack.thumbnailUrl)
+            .build()
+
+        val drawable = imageLoader.execute(request).drawable
+        val bitmap = (drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap
+        val imageBitmap = bitmap?.asImageBitmap()
+
+        imageBitmap?.let {
+            paletteState.generate(it)
+        }
+    }
+
+
+
+    LaunchedEffect(paletteState.palette) {
+        val newColor = paletteState.palette?.darkVibrantSwatch?.let { Color(it.rgb) }
+            ?: paletteState.palette?.darkMutedSwatch?.let { Color(it.rgb) }
+            ?: fallbackSurface
+
+        val newOnColor = paletteState.palette?.darkVibrantSwatch?.let { Color(it.bodyTextColor) }
+            ?: paletteState.palette?.darkMutedSwatch?.let { Color(it.bodyTextColor) }
+            ?: fallbackOnSurface
+
+        launch {
+            dominantColor.animateTo(newColor, animationSpec = tween(500))
+            onDominantColor.animateTo(newOnColor, animationSpec = tween(500))
+        }
+    }
+
 
     if (showAddToPlaylistDialog) {
+        val playlists by libraryViewModel.userPlaylists.collectAsState()
         AddToPlaylistDialog(
             playlists = playlists,
             onDismiss = { showAddToPlaylistDialog = false },
             onPlaylistSelected = { playlistId ->
                 viewModel.addCurrentTrackToPlaylist(playlistId)
+                Toast.makeText(context, "Added to playlist", Toast.LENGTH_SHORT).show()
                 showAddToPlaylistDialog = false
             }
         )
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(
-                        AppBlack,
-                        AppBlack
-                    )
+                    colors = listOf(dominantColor.value, MaterialTheme.colorScheme.background),
+                    endY = LocalConfiguration.current.screenHeightDp.toFloat() * 2
                 )
             )
     ) {
         AsyncImage(
-            model = highQualityThumbnailUrl,
+            model = currentTrack.thumbnailUrl,
             contentDescription = null,
             modifier = Modifier
                 .fillMaxSize()
                 .blur(30.dp),
             contentScale = ContentScale.Crop,
-            alpha = 0.1f
+            alpha = 0.2f
         )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = if (isSmallScreen) 16.dp else 20.dp)
-                .then(
-                    if (isCompactScreen) {
-                        Modifier.verticalScroll(rememberScrollState())
-                    } else {
-                        Modifier
-                    }
-                )
+                .statusBarsPadding()
+                .navigationBarsPadding()
         ) {
-            // Header with back button and controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = if (isCompactScreen) 12.dp else 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onBackClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Back",
-                        tint = AppText,
-                        modifier = Modifier.size(28.dp)
-                    )
+            PlayerTopBar(
+                onBackClick = onBackClick,
+                onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+                onDownloadClick = {
+                    viewModel.downloadCurrentTrack(context)
+                    Toast.makeText(context, "Downloading started.", Toast.LENGTH_SHORT).show()
                 }
-
-                Text(
-                    text = "Now Playing",
-                    color = AppText,
-                    fontSize = if (isSmallScreen) 14.sp else 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
-                Row {
-                    IconButton(
-                        onClick = { showAddToPlaylistDialog = true },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Add,
-                            contentDescription = "Add to Playlist",
-                            tint = AppOrange,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    val context = LocalContext.current
-
-                    IconButton(onClick = {
-                        viewModel.downloadCurrentTrack(context)
-                        Toast.makeText(
-                            context,
-                            "Downloading started.",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }) {
-                        Icon(Icons.Default.Download, contentDescription = "Download")
-                    }
-                }
-            }
-
-            // Spacer with dynamic height
-            Spacer(modifier = Modifier.height(if (isCompactScreen) 5.dp else 10.dp))
-
-            // Album art with responsive sizing
-            val albumArtSize = when {
-                isCompactScreen && isSmallScreen -> 0.7f
-                isCompactScreen -> 0.75f
-                isSmallScreen -> 0.8f
-                else -> 0.85f
-            }
-
-            AsyncImage(
-                model = highQualityThumbnailUrl,
-                contentDescription = "Album art",
-                modifier = Modifier
-                    .fillMaxWidth(albumArtSize)
-                    .aspectRatio(1f)
-                    .align(Alignment.CenterHorizontally)
-                    .clip(RoundedCornerShape(16.dp))
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures { change, dragAmount ->
-                            change.consume()
-                            when {
-                                dragAmount < -50 -> viewModel.skipToNext()
-                                dragAmount > 50 -> viewModel.skipToPrevious()
-                            }
-                        }
-                    },
-                contentScale = ContentScale.Crop
             )
 
-            Spacer(modifier = Modifier.height(if (isCompactScreen) 16.dp else 32.dp))
-
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp)
+                    .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    text = track.title,
-                    color = AppText,
-                    fontSize = when {
-                        isCompactScreen && isSmallScreen -> 18.sp
-                        isCompactScreen -> 20.sp
-                        isSmallScreen -> 22.sp
-                        else -> 24.sp
-                    },
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = if (isCompactScreen) 1 else 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                AsyncImage(
+                    model = highQualityThumbnailUrl,
+                    contentDescription = "Album art",
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { _, dragAmount ->
+                                when {
+                                    dragAmount < -50 -> viewModel.skipToNext()
+                                    dragAmount > 50 -> viewModel.skipToPrevious()
+                                }
+                            }
+                        },
+                    contentScale = ContentScale.Crop
                 )
-                Spacer(modifier = Modifier.height(if (isCompactScreen) 4.dp else 8.dp))
+
+                Spacer(modifier = Modifier.height(32.dp))
+
                 Text(
-                    text = track.artist,
-                    color = AppTextSecondary,
-                    fontSize = when {
-                        isCompactScreen && isSmallScreen -> 13.sp
-                        isCompactScreen -> 14.sp
-                        isSmallScreen -> 15.sp
-                        else -> 16.sp
-                    },
-                    fontWeight = FontWeight.Medium,
+                    text = currentTrack.title,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = onDominantColor.value,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.basicMarquee()
+                )
+                Text(
+                    text = currentTrack.artist,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = onDominantColor.value.copy(alpha = 0.8f),
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 8.dp)
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                PlayerControls(
+                    viewModel = viewModel,
+                    sliderColor = onDominantColor.value
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(if (isCompactScreen) 8.dp else 10.dp))
+@Composable
+fun PlayerTopBar(
+    onBackClick: () -> Unit,
+    onAddToPlaylistClick: () -> Unit,
+    onDownloadClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp, horizontal = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBackClick) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Back")
+        }
+        Text("Now Playing", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Row {
+            IconButton(onClick = onAddToPlaylistClick) {
+                Icon(Icons.Default.Add, contentDescription = "Add to Playlist")
+            }
+            IconButton(onClick = onDownloadClick) {
+                Icon(Icons.Default.Download, contentDescription = "Download")
+            }
+        }
+    }
+}
 
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Slider(
-                    value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                    onValueChange = { newValue -> viewModel.seekTo((newValue * duration).toLong()) },
-                    colors = SliderDefaults.colors(
-                        thumbColor = AppOrange,
-                        activeTrackColor = AppOrange,
-                        inactiveTrackColor = AppTextSecondary.copy(alpha = 0.3f)
-                    ),
-                    modifier = Modifier.fillMaxWidth()
+
+
+@Composable
+fun PlayerControls(viewModel: MusicPlayerViewModel, sliderColor: Color) {
+    val currentPosition = viewModel.currentPosition
+    val duration = viewModel.duration
+    val isPlaying = viewModel.isPlaying
+    val isShuffleEnabled = viewModel.isShuffleEnabled
+    val repeatMode = viewModel.repeatMode
+
+    val controlsColor = MaterialTheme.colorScheme.primary
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Slider(
+            value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
+            onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+            colors = SliderDefaults.colors(
+                thumbColor = controlsColor,
+                activeTrackColor = controlsColor,
+                inactiveTrackColor = controlsColor.copy(alpha = 0.3f)
+            ),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(formatTime(currentPosition), style = MaterialTheme.typography.bodySmall, color = controlsColor)
+            Text(formatTime(duration), style = MaterialTheme.typography.bodySmall, color = controlsColor)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = { viewModel.toggleShuffle() }) {
+                Icon(
+                    Icons.Default.Shuffle,
+                    contentDescription = "Shuffle",
+                    tint = if (isShuffleEnabled) controlsColor else controlsColor.copy(alpha = 0.5f)
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = formatTime(currentPosition),
-                        color = AppTextSecondary,
-                        fontSize = if (isSmallScreen) 11.sp else 12.sp
-                    )
-                    Text(
-                        text = formatTime(duration),
-                        color = AppTextSecondary,
-                        fontSize = if (isSmallScreen) 11.sp else 12.sp
-                    )
-                }
             }
-
-            Spacer(modifier = Modifier.height(if (isCompactScreen) 16.dp else 32.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = if (isSmallScreen) Arrangement.SpaceBetween else Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
+            IconButton(onClick = { viewModel.skipToPrevious() }) {
+                Icon(Icons.Default.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(40.dp), tint = controlsColor)
+            }
+            IconButton(
+                onClick = { if (isPlaying) viewModel.pause() else viewModel.play() },
+                modifier = Modifier.size(72.dp)
             ) {
-                // Shuffle
-                IconButton(
-                    onClick = { viewModel.toggleShuffle() },
-                    modifier = Modifier.size(if (isCompactScreen) 40.dp else 48.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Shuffle,
-                        contentDescription = "Shuffle",
-                        tint = if (isShuffleEnabled) AppOrange else AppTextSecondary,
-                        modifier = Modifier.size(if (isCompactScreen) 20.dp else 24.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = { viewModel.skipToPrevious() },
-                    modifier = Modifier.size(if (isCompactScreen) 48.dp else 56.dp)
-                ) {
-                    Icon(
-                        Icons.Default.SkipPrevious,
-                        contentDescription = "Previous",
-                        tint = AppText,
-                        modifier = Modifier.size(if (isCompactScreen) 28.dp else 32.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = {
-                        if (isPlaying) viewModel.pause() else viewModel.play()
-                    },
-                    modifier = Modifier.size(if (isCompactScreen) 60.dp else 72.dp),
-                    enabled = !isBuffering
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(if (isCompactScreen) 52.dp else 64.dp)
-                            .background(AppOrange, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (isBuffering) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(if (isCompactScreen) 24.dp else 32.dp),
-                                color = Color.White,
-                                strokeWidth = 3.dp
-                            )
-                        } else {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = "Play/Pause",
-                                tint = Color.White,
-                                modifier = Modifier.size(if (isCompactScreen) 24.dp else 32.dp)
-                            )
-                        }
-                    }
-                }
-
-                IconButton(
-                    onClick = { viewModel.skipToNext() },
-                    modifier = Modifier.size(if (isCompactScreen) 48.dp else 56.dp)
-                ) {
-                    Icon(
-                        Icons.Default.SkipNext,
-                        contentDescription = "Next",
-                        tint = AppText,
-                        modifier = Modifier.size(if (isCompactScreen) 28.dp else 32.dp)
-                    )
-                }
-
-                IconButton(
-                    onClick = { viewModel.toggleRepeat() },
-                    modifier = Modifier.size(if (isCompactScreen) 40.dp else 48.dp)
-                ) {
-                    val (icon, tint) = when (repeatMode) {
-                        Player.REPEAT_MODE_ALL -> Icons.Default.Repeat to AppOrange
-                        Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne to AppOrange
-                        else -> Icons.Default.Repeat to AppTextSecondary
-                    }
-                    Icon(
-                        icon,
-                        contentDescription = "Repeat",
-                        tint = tint,
-                        modifier = Modifier.size(if (isCompactScreen) 20.dp else 24.dp)
-                    )
-                }
+                Icon(
+                    imageVector = if (isPlaying) Icons.Filled.PauseCircle else Icons.Filled.PlayCircle,
+                    contentDescription = "Play/Pause",
+                    tint = controlsColor,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
-
-            if (!isCompactScreen) {
-                Spacer(modifier = Modifier.weight(1f))
-            } else {
-                Spacer(modifier = Modifier.height(16.dp))
+            IconButton(onClick = { viewModel.skipToNext() }) {
+                Icon(Icons.Default.SkipNext, contentDescription = "Next", modifier = Modifier.size(40.dp), tint = controlsColor)
+            }
+            IconButton(onClick = { viewModel.toggleRepeat() }) {
+                val (icon, tint) = when (repeatMode) {
+                    Player.REPEAT_MODE_ALL -> Icons.Default.Repeat to controlsColor
+                    Player.REPEAT_MODE_ONE -> Icons.Default.RepeatOne to controlsColor
+                    else -> Icons.Default.Repeat to controlsColor.copy(alpha = 0.5f)
+                }
+                Icon(icon, contentDescription = "Repeat", tint = tint)
             }
         }
     }
 }
 
 private fun formatTime(timeMs: Long): String {
+    if (timeMs < 0) {
+        return "--:--"
+    }
     val totalSeconds = timeMs / 1000
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60

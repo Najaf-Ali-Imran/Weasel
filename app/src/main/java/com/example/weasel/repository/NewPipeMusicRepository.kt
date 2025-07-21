@@ -13,6 +13,8 @@ import org.schabi.newpipe.extractor.kiosk.KioskList
 import org.schabi.newpipe.extractor.kiosk.KioskExtractor
 import org.schabi.newpipe.extractor.localization.ContentCountry
 import org.schabi.newpipe.extractor.localization.Localization
+import com.example.weasel.data.Suggestion
+import org.schabi.newpipe.extractor.services.youtube.YoutubeService
 
 class NewPipeMusicRepository : MusicRepository {
 
@@ -443,7 +445,29 @@ class NewPipeMusicRepository : MusicRepository {
             .maxByOrNull { it.width * it.height }
             ?.url ?: ""
     }
+
+    suspend fun getSearchSuggestions(query: String): Result<List<Suggestion>> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (query.isBlank()) {
+                    return@withContext Result.success(emptyList())
+                }
+                val extractor = ServiceList.YouTube.getSuggestionExtractor()
+                    ?: return@withContext Result.success(emptyList())
+
+                val raw = extractor.suggestionList(query)
+
+                val suggestions = raw.map { text -> Suggestion(text) }
+
+                Result.success(suggestions)
+            } catch (e: Exception) {
+                Result.failure(Exception("Failed to get suggestions: ${e.message}", e))
+            }
+        }
+    }
 }
+
+
 
 // Data class to hold search results with pagination info
 data class SearchResult(

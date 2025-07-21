@@ -1,39 +1,32 @@
 package com.example.weasel.ux
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.RateReview
-import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import com.example.weasel.R
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.weasel.MainActivity
 import com.example.weasel.data.Track
+import com.example.weasel.repository.ThemeSetting
 import com.example.weasel.viewmodel.LibraryViewModel
+import com.example.weasel.viewmodel.ThemeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,7 +38,15 @@ fun SettingsScreen(
 ) {
     val history by libraryViewModel.history.collectAsState()
     var isHistoryExpanded by remember { mutableStateOf(false) }
+    var isGeneralExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    val themeViewModel: ThemeViewModel = viewModel(factory = (context as MainActivity).viewModelFactory)
+    val currentTheme by themeViewModel.theme.collectAsState()
+    val isNavBarTranslucent by themeViewModel.isNavBarTranslucent.collectAsState()
+
+    var showRestartDialog by remember { mutableStateOf(false) }
+    var restartDialogText by remember { mutableStateOf("") }
 
     val bugReportUrl = "https://docs.google.com/forms/d/e/1FAIpQLSewvwCjbEZO0s9ho6c4oUfT0cIMmhdxpVRPB90WK3P9xea9-g/viewform?usp=dialog"
     val reviewUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdPg8zGwYKbRFm8zZivIL45xQ0u5MY4OtGwKdDZlgG0sHpJYA/viewform?usp=dialog"
@@ -55,9 +56,37 @@ fun SettingsScreen(
         try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             context.startActivity(intent)
-        } catch (e: Exception) {
-
+        } catch (_: Exception) {
         }
+    }
+
+    fun restartApplication() {
+        val intent = Intent(context, MainActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+        context.startActivity(intent)
+        (context as? Activity)?.finish()
+        android.os.Process.killProcess(android.os.Process.myPid())
+    }
+
+    if (showRestartDialog) {
+        AlertDialog(
+            onDismissRequest = { showRestartDialog = false },
+            title = { Text("Restart Required") },
+            text = { Text(restartDialogText) },
+            confirmButton = {
+                TextButton(onClick = {
+                    showRestartDialog = false
+                    restartApplication()
+                }) {
+                    Text("Restart Now")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestartDialog = false }) {
+                    Text("Later")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -66,10 +95,7 @@ fun SettingsScreen(
                 title = { Text("Settings") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateUp) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -86,11 +112,65 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                SettingsSection(
+                    title = "General",
+                    icon = Icons.Default.Tune,
+                    isExpanded = isGeneralExpanded,
+                    onExpandClick = { isGeneralExpanded = !isGeneralExpanded }
+                ) {
+                    AnimatedVisibility(
+                        visible = isGeneralExpanded,
+                        enter = expandVertically(),
+                        exit = shrinkVertically()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Column {
+                                Text("Theme", style = MaterialTheme.typography.titleSmall)
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ThemeButton("Light", currentTheme == ThemeSetting.LIGHT, Modifier.weight(1f)) {
+                                        themeViewModel.setTheme(ThemeSetting.LIGHT)
+                                    }
+                                    ThemeButton("Dark", currentTheme == ThemeSetting.DARK, Modifier.weight(1f)) {
+                                        themeViewModel.setTheme(ThemeSetting.DARK)
+                                    }
+                                    ThemeButton("System", currentTheme == ThemeSetting.SYSTEM, Modifier.weight(1f)) {
+                                        themeViewModel.setTheme(ThemeSetting.SYSTEM)
+                                    }
+                                }
+                            }
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        themeViewModel.setNavBarTranslucency(!isNavBarTranslucent)
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Translucent Nav Bar",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Switch(
+                                    checked = isNavBarTranslucent,
+                                    onCheckedChange = {
+                                        themeViewModel.setNavBarTranslucency(it)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             item {
@@ -105,31 +185,12 @@ fun SettingsScreen(
                         enter = expandVertically(),
                         exit = shrinkVertically()
                     ) {
-                        Column(
-                            modifier = Modifier.padding(top = 8.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
                             if (history.isEmpty()) {
-                                Text(
-                                    text = "No listening history yet",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                                Text("No listening history yet", modifier = Modifier.padding(16.dp))
                             } else {
                                 history.take(10).forEach { historyEntry ->
-                                    TrackListItem(
-                                        track = historyEntry.track,
-                                        onTrackClicked = onTrackClick
-                                    )
-                                }
-
-                                if (history.size > 10) {
-                                    Text(
-                                        text = "... and ${history.size - 10} more",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.tertiary,
-                                        modifier = Modifier.padding(16.dp)
-                                    )
+                                    TrackListItem(track = historyEntry.track, onTrackClicked = onTrackClick)
                                 }
                             }
                         }
@@ -137,60 +198,9 @@ fun SettingsScreen(
                 }
             }
 
-            item {
-                SettingsLinkSection(
-                    title = "Report Crash/Bug",
-                    icon = Icons.Default.BugReport,
-                    onClick = { openUrl(bugReportUrl) }
-                )
-            }
-
-            item {
-                SettingsLinkSection(
-                    title = "Review",
-                    icon = Icons.Default.RateReview,
-                    onClick = { openUrl(reviewUrl) }
-                )
-            }
-
-            item {
-                SettingsLinkSection(
-                    title = "Suggestions",
-                    icon = Icons.Default.Lightbulb,
-                    onClick = { openUrl(suggestionsUrl) }
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_underdevelopment),
-                        contentDescription = "Under Development",
-                        modifier = Modifier.size(228.dp) // Doubled from 64dp
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "App Under Development",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-
-                    Text(
-                        text = "More settings coming soon!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                }
-            }
+            item { SettingsLinkSection("Report a Bug", Icons.Default.BugReport) { openUrl(bugReportUrl) } }
+            item { SettingsLinkSection("Review Weasel", Icons.Default.RateReview) { openUrl(reviewUrl) } }
+            item { SettingsLinkSection("Suggest a Feature", Icons.Default.Lightbulb) { openUrl(suggestionsUrl) } }
         }
     }
 }
@@ -205,18 +215,14 @@ fun SettingsSection(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onExpandClick() }
+                    .clickable(onClick = onExpandClick)
                     .padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
@@ -225,63 +231,55 @@ fun SettingsSection(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Text(title, style = MaterialTheme.typography.titleMedium)
                 }
-
                 Icon(
-                    imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = MaterialTheme.colorScheme.onSurface
+                    if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Toggle"
                 )
             }
-
             content()
         }
     }
 }
 
 @Composable
-fun SettingsLinkSection(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
+fun SettingsLinkSection(title: String, icon: ImageVector, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
+        onClick = onClick,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { onClick() }
-                .padding(16.dp),
+            modifier = Modifier.padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleMedium)
         }
+    }
+}
+
+@Composable
+private fun ThemeButton(
+    text: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(8.dp),
+        colors = if (isSelected) ButtonDefaults.outlinedButtonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) else ButtonDefaults.outlinedButtonColors(),
+        border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+    ) {
+        Text(text)
     }
 }

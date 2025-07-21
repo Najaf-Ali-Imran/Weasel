@@ -1,3 +1,4 @@
+// In: app/src/main/java/com/example/weasel/di/ViewModelFactory.kt
 package com.example.weasel.di
 
 import android.app.Application
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.example.weasel.repository.LocalMusicRepository
 import com.example.weasel.repository.MusicRepository
 import com.example.weasel.repository.NewPipeMusicRepository
+import com.example.weasel.repository.SettingsRepository
 import com.example.weasel.util.AppConnectivityManager
 import com.example.weasel.viewmodel.*
 
@@ -17,6 +19,8 @@ class ViewModelFactory(
     private val connectivityManager: AppConnectivityManager,
     private val application: Application
 ) : ViewModelProvider.Factory {
+
+    val settingsRepository by lazy { SettingsRepository(application) }
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(
@@ -38,6 +42,9 @@ class ViewModelFactory(
             }
             modelClass.isAssignableFrom(MessageViewModel::class.java) -> {
                 MessageViewModel() as T
+            }
+            modelClass.isAssignableFrom(ThemeViewModel::class.java) -> {
+                ThemeViewModel(settingsRepository) as T
             }
             modelClass.isAssignableFrom(PlaylistDetailViewModel::class.java) -> {
                 val savedStateHandle = extras.createSavedStateHandle()

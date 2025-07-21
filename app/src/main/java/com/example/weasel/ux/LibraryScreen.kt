@@ -20,7 +20,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,7 +30,10 @@ import com.example.weasel.R
 import com.example.weasel.data.Playlist
 import com.example.weasel.viewmodel.LibraryViewModel
 import androidx.compose.ui.platform.LocalContext
-
+import coil.compose.AsyncImage
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Folder
+import com.example.weasel.viewmodel.LIKED_SONGS_PLAYLIST_NAME
 
 
 @Composable
@@ -40,13 +45,14 @@ fun LibraryScreen(
     onDownloadsClick: () -> Unit,
     contentPadding: PaddingValues
 ) {
-    val playlists by viewModel.playlists.collectAsState()
     val localSongs by viewModel.localSongs.collectAsState()
     val downloadedTracks by viewModel.downloadedTracks.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
     var showCreateDialog by remember { mutableStateOf(false) }
     var playlistName by remember { mutableStateOf("") }
     val context = LocalContext.current
+    val likedSongsPlaylist by viewModel.likedSongsPlaylist.collectAsState()
+    val userPlaylists by viewModel.userPlaylists.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.loadLocalSongs()
@@ -192,7 +198,16 @@ fun LibraryScreen(
                             onClick = onDownloadsClick
                         )
                     }
-                    items(items = playlists, key = { it.id }) { playlist ->
+
+                    likedSongsPlaylist?.let { playlist ->
+                        item {
+                            LikedSongsItem(
+                                onClick = { onPlaylistClick(playlist.id) }
+                            )
+                        }
+                    }
+
+                    items(items = userPlaylists, key = { it.id }) { playlist ->
                         PlaylistItem(
                             playlist = playlist,
                             onClick = { onPlaylistClick(playlist.id) }
@@ -233,6 +248,41 @@ fun LibraryScreen(
     }
 }
 
+
+@Composable
+private fun LikedSongsItem(onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(56.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(Color(0xFF8B5CF6), Color(0xFFE91E63))
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.Favorite,
+                contentDescription = "Liked Songs",
+                tint = Color.White,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(16.dp))
+        Column {
+            Text(LIKED_SONGS_PLAYLIST_NAME, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+            Text("Playlist", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f))
+        }
+    }
+}
 @Composable
 private fun LocalSongsItem(trackCount: Int, onClick: () -> Unit) {
     Row(
@@ -254,7 +304,7 @@ private fun LocalSongsItem(trackCount: Int, onClick: () -> Unit) {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Filled.Favorite,
+                imageVector = Icons.Filled.Folder,
                 contentDescription = "Local Music",
                 tint = Color.Red,
                 modifier = Modifier.size(28.dp)
@@ -312,17 +362,18 @@ private fun PlaylistItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        AsyncImage(
+            model = playlist.thumbnailUrl,
+            contentDescription = playlist.name,
+            error = painterResource(id = R.drawable.ic_library_music),
+            placeholder = painterResource(id = R.drawable.ic_library_music),
             modifier = Modifier
                 .size(56.dp)
-                .background(
-                    color = MaterialTheme.colorScheme.surface,
-                    shape = RoundedCornerShape(8.dp)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "🎵", fontSize = 24.sp)
-        }
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant),
+            contentScale = ContentScale.Crop
+        )
+
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(

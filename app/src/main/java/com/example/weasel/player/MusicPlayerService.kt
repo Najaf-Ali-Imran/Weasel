@@ -16,10 +16,15 @@ class MusicPlayerService : MediaSessionService() {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        val player = mediaSession?.player!!
-        if (!player.playWhenReady || player.mediaItemCount == 0) {
-            stopSelf()
+        val player = mediaSession?.player
+        if (player != null) {
+            player.stop()
+            player.clearMediaItems()
         }
+
+        stopSelf()
+
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? {

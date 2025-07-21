@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -21,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.weasel.ui.resources.AppIcons
-import com.example.weasel.ui.theme.*
 import com.example.weasel.viewmodel.MusicPlayerViewModel
 
 @Composable
@@ -49,8 +49,8 @@ fun MiniPlayer(
                     .background(
                         brush = Brush.horizontalGradient(
                             colors = listOf(
-                                AppCard.copy(alpha = 0.95f),
-                                AppCard.copy(alpha = 0.85f)
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                             )
                         ),
                         shape = RoundedCornerShape(16.dp)
@@ -65,7 +65,7 @@ fun MiniPlayer(
                     Card(
                         modifier = Modifier.size(56.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = AppBlack),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.background),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                     ) {
                         AsyncImage(
@@ -84,7 +84,7 @@ fun MiniPlayer(
                     ) {
                         Text(
                             text = track.title,
-                            color = AppText,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1,
@@ -92,7 +92,7 @@ fun MiniPlayer(
                         )
                         Text(
                             text = track.artist,
-                            color = AppTextSecondary,
+                            color = MaterialTheme.colorScheme.tertiary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
@@ -114,7 +114,7 @@ fun MiniPlayer(
                                 modifier = Modifier.size(36.dp),
                                 shape = CircleShape,
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AppBlack.copy(alpha = 0.5f)
+                                    containerColor = MaterialTheme.colorScheme.background
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
@@ -140,7 +140,8 @@ fun MiniPlayer(
                                 modifier = Modifier.size(44.dp),
                                 shape = CircleShape,
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AppOrange
+                                    // Use theme's primary color
+                                    containerColor = MaterialTheme.colorScheme.primary
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
@@ -151,7 +152,7 @@ fun MiniPlayer(
                                     if (isBuffering) {
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(24.dp),
-                                            color = Color.White,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             strokeWidth = 2.dp
                                         )
                                     } else {
@@ -161,7 +162,7 @@ fun MiniPlayer(
                                             ),
                                             contentDescription = if (isPlaying) "Pause" else "Play",
                                             modifier = Modifier.size(22.dp),
-                                            tint = Color.White
+                                            tint = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
                                 }
@@ -176,7 +177,7 @@ fun MiniPlayer(
                                 modifier = Modifier.size(36.dp),
                                 shape = CircleShape,
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AppBlack.copy(alpha = 0.5f)
+                                    containerColor = MaterialTheme.colorScheme.background
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
@@ -201,7 +202,7 @@ fun MiniPlayer(
                                 modifier = Modifier.size(36.dp),
                                 shape = CircleShape,
                                 colors = CardDefaults.cardColors(
-                                    containerColor = AppRed.copy(alpha = 0.2f)
+                                    containerColor = MaterialTheme.colorScheme.secondary
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                             ) {
@@ -212,7 +213,8 @@ fun MiniPlayer(
                                     Image(
                                         painter = painterResource(id = AppIcons.PlayerClose),
                                         contentDescription = "Close",
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(16.dp),
+                                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onBackground)
                                     )
                                 }
                             }

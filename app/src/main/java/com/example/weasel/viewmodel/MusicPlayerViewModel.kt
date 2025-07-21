@@ -342,6 +342,46 @@ class MusicPlayerViewModel(
         }
     }
 
+    private fun addTrackToMediaController(track: Track, atIndex: Int = -1) {
+        viewModelScope.launch {
+            val audioUrl = getAudioUrlForTrack(track)
+            if (audioUrl.isNotEmpty()) {
+                val mediaItem = createMediaItem(track, audioUrl)
+                if (atIndex == -1 || atIndex > playlist.size) {
+                    // Add to end
+                    mediaController?.addMediaItem(mediaItem)
+                    playlist.add(track)
+                } else {
+                    // Add at a specific index
+                    mediaController?.addMediaItem(atIndex, mediaItem)
+                    playlist.add(atIndex, track)
+                }
+            }
+        }
+    }
+
+    fun addTrackToQueue(track: Track) {
+        addTrackToMediaController(track)
+    }
+
+    fun playTrackNext(track: Track) {
+        val nextIndex = (mediaController?.currentMediaItemIndex ?: -1) + 1
+        addTrackToMediaController(track, nextIndex)
+    }
+
+    private suspend fun getAudioUrlForTrack(track: Track): String {
+        return when {
+            track.isDownloaded && track.localPath != null && File(track.localPath).exists() -> track.localPath
+            track.id.startsWith("content://") -> track.id
+            audioUrlCache.containsKey(track.id) -> audioUrlCache[track.id]!!
+            else -> {
+                val url = musicRepository.getAudioStreamUrl(track.id).getOrNull() ?: ""
+                if (url.isNotEmpty()) audioUrlCache[track.id] = url
+                url
+            }
+        }
+    }
+
     private fun createMediaItem(track: Track, audioUrl: String): MediaItem {
         val metadata = MediaMetadata.Builder()
             .setTitle(track.title)

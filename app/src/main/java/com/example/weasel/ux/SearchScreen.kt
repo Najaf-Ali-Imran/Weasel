@@ -1,10 +1,9 @@
-package com.example.weasel.ux // Corrected package name
+package com.example.weasel.ux
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,49 +11,77 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import com.example.weasel.data.Suggestion
 import com.example.weasel.data.Track
-import com.example.weasel.ui.theme.AppCard
+import com.example.weasel.viewmodel.LibraryViewModel
+import com.example.weasel.viewmodel.MusicPlayerViewModel
 import com.example.weasel.viewmodel.SearchUiState
 import com.example.weasel.viewmodel.SearchViewModel
-import androidx.compose.runtime.snapshotFlow
-import com.example.weasel.viewmodel.LibraryViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     viewModel: SearchViewModel,
     libraryViewModel: LibraryViewModel,
+    playerViewModel: MusicPlayerViewModel,
     onTrackClick: (Track) -> Unit,
-    contentPadding: PaddingValues,
     onSettingsClick: () -> Unit,
+    contentPadding: PaddingValues,
     onDownloadQueueClick: () -> Unit,
     hasNewmessage: Boolean,
     onmessageClick: () -> Unit
-
 ) {
     val downloadQueue by libraryViewModel.downloadQueue.collectAsState()
     val focusManager = LocalFocusManager.current
+    var selectedTrackForMenu by remember { mutableStateOf<Track?>(null) }
+    var showTrackOptionsMenu by remember { mutableStateOf(false) }
+    var showAddToPlaylistDialog by remember { mutableStateOf(false) }
+    val playlists by libraryViewModel.userPlaylists.collectAsState()
+
+    if (showTrackOptionsMenu && selectedTrackForMenu != null) {
+        SearchTrackOptionsMenu(
+            track = selectedTrackForMenu!!,
+            onDismiss = { showTrackOptionsMenu = false },
+            onDownloadClick = { libraryViewModel.downloadTrack(it) },
+            onAddToPlaylistClick = { showAddToPlaylistDialog = true },
+            onPlayNextClick = { playerViewModel.playTrackNext(it) },
+            onAddToQueueClick = { playerViewModel.addTrackToQueue(it) },
+            onLikeClick = { libraryViewModel.addTrackToLikedSongs(it) }
+        )
+    }
+
+    if (showAddToPlaylistDialog && selectedTrackForMenu != null) {
+        AddToPlaylistDialog(
+            playlists = playlists,
+            onDismiss = { showAddToPlaylistDialog = false },
+            onPlaylistSelected = { playlistId ->
+                libraryViewModel.addTrackToPlaylist(playlistId, selectedTrackForMenu!!)
+                showAddToPlaylistDialog = false
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(contentPadding) // Apply padding here
             .background(MaterialTheme.colorScheme.background)
+
     ) {
+        Spacer(modifier = Modifier.height(24.dp))
+
         TopBar(
             title = "Search",
             onSettingsClick = onSettingsClick,
@@ -62,65 +89,55 @@ fun SearchScreen(
             onDownloadQueueClick = onDownloadQueueClick,
             hasNewmessage = hasNewmessage,
             onmessageClick = onmessageClick
+        )
 
-            )
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = viewModel.searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChanged(it) },
-                    placeholder = { Text("What do you want to listen to?", color = MaterialTheme.colorScheme.tertiary) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.tertiary) },
-                    trailingIcon = {
-                        if (viewModel.searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    viewModel.onSearchQueryChanged("")
-                                    focusManager.clearFocus()
-                                }
-                            ) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.tertiary)
-                            }
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            OutlinedTextField(
+                value = viewModel.searchQuery,
+                onValueChange = { viewModel.onSearchQueryChanged(it) },
+                placeholder = { Text("What do you want to listen to?", color = MaterialTheme.colorScheme.tertiary) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search", tint = MaterialTheme.colorScheme.tertiary) },
+                trailingIcon = {
+                    if (viewModel.searchQuery.isNotEmpty()) {
+                        IconButton(
+                            onClick = { viewModel.onSearchQueryChanged("") }
+                        ) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear", tint = MaterialTheme.colorScheme.tertiary)
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
-                        focusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
-                        viewModel.search()
-                        focusManager.clearFocus()
-                    })
-                )
-
-                if (viewModel.searchQuery.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    FilterTabs(
-                        selectedFilter = viewModel.selectedFilter,
-                        onFilterSelected = { viewModel.onFilterSelected(it) }
-                    )
-                }
-            }
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
+                shape = RoundedCornerShape(30.dp),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = {
+                    viewModel.search()
+                    focusManager.clearFocus()
+                })
+            )
         }
 
         Box(modifier = Modifier.weight(1f)) {
             val uiState = viewModel.uiState
+            val suggestions = viewModel.suggestions
+
             when (uiState) {
                 is SearchUiState.Idle -> {
-                    if (viewModel.searchQuery.isEmpty()) {
-                        BrowseContent()
+                    if (viewModel.searchQuery.isNotBlank() && suggestions.isNotEmpty()) {
+                        SuggestionList(
+                            suggestions = suggestions,
+                            contentPadding = contentPadding,
+                            onSuggestionClick = { suggestion ->
+                                focusManager.clearFocus()
+                                viewModel.search(suggestion)
+                            }
+                        )
                     } else {
-                        EmptySearchState()
+                        EmptySearchState(contentPadding)
                     }
                 }
                 is SearchUiState.Loading -> {
@@ -129,7 +146,12 @@ fun SearchScreen(
                     }
                 }
                 is SearchUiState.Error -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(contentPadding),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(uiState.message, color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -138,7 +160,12 @@ fun SearchScreen(
                         tracks = uiState.tracks,
                         isLoadingMore = viewModel.isLoadingMore,
                         onTrackClick = onTrackClick,
-                        onLoadMore = { viewModel.loadMoreResults() }
+                        onLoadMore = { viewModel.loadMoreResults() },
+                        contentPadding = contentPadding,
+                        onShowMenuClick = { track ->
+                            selectedTrackForMenu = track
+                            showTrackOptionsMenu = true
+                        }
                     )
                 }
             }
@@ -151,82 +178,109 @@ private fun SearchResults(
     tracks: List<Track>,
     isLoadingMore: Boolean,
     onTrackClick: (Track) -> Unit,
-    onLoadMore: () -> Unit
+    onLoadMore: () -> Unit,
+    contentPadding: PaddingValues,
+    onShowMenuClick: (Track) -> Unit
 ) {
     val lazyListState = rememberLazyListState()
 
     LaunchedEffect(lazyListState) {
         snapshotFlow { lazyListState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
-            .collect { lastVisibleItemIndex ->
-                if (lastVisibleItemIndex != null && lastVisibleItemIndex >= tracks.size - 5 && !isLoadingMore) {
-                    onLoadMore()
-                }
-            }
+            .map { it != null && it >= tracks.size - 5 && !isLoadingMore }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect { onLoadMore() }
     }
 
-    LazyColumn(state = lazyListState, contentPadding = PaddingValues(horizontal = 16.dp)) {
-        items(tracks) { track ->
-            EnhancedTrackListItem(
-                track = track,
-                onTrackClick = { onTrackClick(track) }
-            )
+    LazyColumn(state = lazyListState, contentPadding = contentPadding) {
+        item { Spacer(modifier = Modifier.height(8.dp)) }
+
+        items(tracks, key = { it.id }) { track ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onTrackClick(track) }
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // The TrackListItem takes up the available space
+                Box(modifier = Modifier.weight(1f)) {
+                    TrackListItem(
+                        track = track,
+                        onTrackClicked = { onTrackClick(track) },
+                        isClickable = false,
+                        modifier = Modifier
+                    )
+                }
+                // The three-dot menu button
+                IconButton(onClick = { onShowMenuClick(track) }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More options")
+                }
+            }
         }
 
         if (isLoadingMore) {
             item {
-                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
             }
         }
     }
 }
-
-
-
 @Composable
-private fun EnhancedTrackListItem(track: Track, onTrackClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onTrackClick() }
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun SuggestionList(
+    suggestions: List<Suggestion>,
+    contentPadding: PaddingValues,
+    onSuggestionClick: (String) -> Unit
+) {
+    LazyColumn(
+        contentPadding = contentPadding,
+        modifier = Modifier.fillMaxSize()
     ) {
-        AsyncImage(
-            model = track.thumbnailUrl,
-            contentDescription = "Album art for ${track.title}",
-            modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(AppCard),
-            contentScale = ContentScale.Crop
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = track.title,
-                color = MaterialTheme.colorScheme.onBackground,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = track.artist,
-                color = MaterialTheme.colorScheme.tertiary,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+        items(suggestions, key = { "suggestion_${it.query}" }) { suggestion ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSuggestionClick(suggestion.query) }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Search,
+                    contentDescription = "Suggestion",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Text(
+                    text = suggestion.query,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 16.sp
+                )
+            }
         }
     }
 }
 
-// Dummy composables for idle/empty states
+
 @Composable
-private fun FilterTabs(selectedFilter: String, onFilterSelected: (String) -> Unit) { /* ... */ }
-@Composable
-private fun BrowseContent() { /* ... */ }
-@Composable
-private fun EmptySearchState() { /* ... */ }
+private fun EmptySearchState(contentPadding: PaddingValues) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(contentPadding)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            "Find your next favorite song.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}

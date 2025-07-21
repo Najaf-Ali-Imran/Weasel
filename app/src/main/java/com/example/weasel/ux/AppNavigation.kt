@@ -26,7 +26,7 @@ fun AppNavigation(
 ) {
     var showAddToPlaylistDialog by remember { mutableStateOf(false) }
     var tracksToAdd by remember { mutableStateOf<List<String>>(emptyList()) }
-    val playlists by libraryViewModel.playlists.collectAsState()
+    val playlists by libraryViewModel.userPlaylists.collectAsState()
 
     if (showAddToPlaylistDialog) {
         AddToPlaylistDialog(
@@ -49,7 +49,7 @@ fun AppNavigation(
                 libraryViewModel = libraryViewModel,
                 onTrackClick = { track -> playerViewModel.playTrack(navController.context, track, listOf(track)) },
                 onArtistClick = { artistName ->
-                    searchViewModel.setQueryAndSearch(artistName)
+                    searchViewModel.search(artistName)
                     navController.navigate(SEARCH_ROUTE)
                 },
                 onSettingsClick = onSettingsClick,
@@ -65,13 +65,15 @@ fun AppNavigation(
             SearchScreen(
                 viewModel = searchViewModel,
                 libraryViewModel = libraryViewModel,
+                // --- FIX 2: Pass the playerViewModel to the SearchScreen ---
+                playerViewModel = playerViewModel,
                 onTrackClick = { track -> playerViewModel.playTrack(navController.context, track, searchResults) },
                 onSettingsClick = onSettingsClick,
                 contentPadding = contentPadding,
                 onDownloadQueueClick = onDownloadQueueClick,
                 hasNewmessage = hasNewmessage,
-                onmessageClick = onmessageClick,
-                )
+                onmessageClick = onmessageClick
+            )
         }
 
         composable(LIBRARY_ROUTE) {
@@ -121,14 +123,13 @@ fun AppNavigation(
         composable(
             route = "$PLAYLIST_DETAIL_ROUTE/{playlistId}",
             arguments = listOf(navArgument("playlistId") { type = NavType.LongType })
-        ) { backStackEntry ->
+        ) {
             val factory = (navController.context as MainActivity).viewModelFactory
             val detailViewModel: PlaylistDetailViewModel = viewModel(factory = factory)
             PlaylistDetailScreen(
                 viewModel = detailViewModel,
                 onTrackClick = { track, tracks -> playerViewModel.playTrack(navController.context, track, tracks) },
                 onNavigateUp = { navController.popBackStack() },
-
             )
         }
 
@@ -138,7 +139,8 @@ fun AppNavigation(
             AddSongsScreen(
                 libraryViewModel = libraryViewModel,
                 onNavigateUp = { navController.popBackStack() },
-                onAddSongs = { trackIds -> detailViewModel.addSongsToPlaylist(trackIds) }
+                onAddSongs = { trackIds ->
+                }
             )
         }
     }

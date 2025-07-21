@@ -2,21 +2,23 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("com.google.devtools.ksp") version "2.0.0-1.0.24"
+    id("com.google.devtools.ksp") version "2.1.20-2.0.1"
     id("com.google.gms.google-services")
 
 }
-
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
 android {
     namespace = "com.example.weasel"
     compileSdk = 35
 
     defaultConfig {
         applicationId = "com.example.weasel"
-        minSdk = 24
+        minSdk = 25
         targetSdk = 35
         versionCode = 1
-        versionName = "0.1.1"
+        versionName = "0.1.2"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -31,10 +33,8 @@ android {
     }
 
     compileOptions {
-        // Use Java 8 for desugaring
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-        // Kotlin‑DSL setter for core library desugaring
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
     lint {
@@ -42,8 +42,7 @@ android {
         abortOnError = false
     }
     kotlinOptions {
-        // Match Java compatibility
-        jvmTarget = "1.8"
+        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -70,6 +69,7 @@ dependencies {
 
     // Accompanist
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.34.0")
+    implementation("androidx.startup:startup-runtime:1.2.0")
 
     // NewPipe Extractor
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.6")
@@ -80,6 +80,7 @@ dependencies {
     implementation("androidx.media3:media3-session:1.7.1")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
+    implementation("androidx.work:work-runtime-ktx:2.10.2")
 
     implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
     implementation("com.google.firebase:firebase-analytics")
@@ -101,20 +102,21 @@ dependencies {
     implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.24.6")
 
     // Room Database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.2")
+    implementation("androidx.room:room-ktx:2.7.2")
+    ksp("androidx.room:room-compiler:2.7.2")
+
+
+    implementation("com.kmpalette:kmpalette-core:3.1.0")
 
     // SplashScreen
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     // WorkManager
-    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
     // Networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
-    // IMPORTANT: Use the NIO version of desugaring for NewPipe compatibility
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.0.3")
 
     // Testing

@@ -10,15 +10,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.weasel.ui.theme.AppBlack
 import androidx.compose.ui.window.DialogProperties
-import com.example.weasel.ui.theme.AppCard
 import com.example.weasel.viewmodel.AppMessage
 import java.text.SimpleDateFormat
 import java.util.*
@@ -42,7 +39,7 @@ fun MessageDialog(
                 .padding(horizontal = 24.dp),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = AppBlack
+                containerColor = MaterialTheme.colorScheme.surface
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = 24.dp)
         )
@@ -59,7 +56,7 @@ fun MessageDialog(
                         .size(72.dp)
                         .clip(RoundedCornerShape(36.dp))
                         .background(
-                            color = AppBlack
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
                         ),
                     contentAlignment = Alignment.Center
                 ) {

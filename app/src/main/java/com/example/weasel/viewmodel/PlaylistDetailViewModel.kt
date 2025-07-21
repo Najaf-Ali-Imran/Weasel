@@ -4,12 +4,12 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.WorkManager
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.example.weasel.data.DownloadWorker
-import com.example.weasel.data.Track
 import com.example.weasel.data.PlaylistWithTracks
+import com.example.weasel.data.Track
 import com.example.weasel.repository.LocalMusicRepository
 import com.example.weasel.repository.NewPipeMusicRepository
 import com.example.weasel.util.AppConnectivityManager
@@ -24,18 +24,17 @@ class PlaylistDetailViewModel(
 ) : ViewModel() {
 
     private val playlistId: Long = savedStateHandle.get<Long>("playlistId") ?: -1L
-
     private val _sortOrder = MutableStateFlow(SortOrder.DEFAULT)
     val sortOrder: StateFlow<SortOrder> = _sortOrder
-
     val isOnline: StateFlow<Boolean> = connectivityManager.isOnline
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
-
-
-    val playlistTracks: StateFlow<List<Track>> =
+    private val playlistWithTracks: StateFlow<PlaylistWithTracks?> =
         localMusicRepository.getPlaylistWithTracks(playlistId)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val playlistTracks: StateFlow<List<Track>> =
+        playlistWithTracks
             .filterNotNull()
-            .combine(_sortOrder) { playlistWithTracks: PlaylistWithTracks, order: SortOrder ->
+            .combine(_sortOrder) { playlistWithTracks, order ->
                 when (order) {
                     SortOrder.DEFAULT -> playlistWithTracks.tracks
                     SortOrder.A_TO_Z -> playlistWithTracks.tracks.sortedBy { it.title }
@@ -43,18 +42,46 @@ class PlaylistDetailViewModel(
                 }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
     val playlistName: StateFlow<String> =
-        localMusicRepository.getPlaylistWithTracks(playlistId)
-            .filterNotNull()
-            .map { it.playlist.name }
+        playlistWithTracks.filterNotNull().map { it.playlist.name }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "")
-
+    val playlistThumbnailUrl: StateFlow<String?> =
+        playlistWithTracks.filterNotNull().map { it.playlist.thumbnailUrl }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     private val _recommendations = MutableStateFlow<List<Track>>(emptyList())
     val recommendations: StateFlow<List<Track>> = _recommendations
-
     private val _isLoadingRecommendations = MutableStateFlow(false)
     val isLoadingRecommendations: StateFlow<Boolean> = _isLoadingRecommendations
+    private val _localSongs = MutableStateFlow<List<Track>>(emptyList())
+    val localSongs: StateFlow<List<Track>> = _localSongs
+    private val _addSongsSearchResults = MutableStateFlow<List<Track>>(emptyList())
+    val addSongsSearchResults: StateFlow<List<Track>> = _addSongsSearchResults
+    private val _isSearchingForSongs = MutableStateFlow(false)
+    val isSearchingForSongs: StateFlow<Boolean> = _isSearchingForSongs
+
+    fun searchForSongsToAdd(query: String) {
+        if (query.isBlank()) {
+            _addSongsSearchResults.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            _isSearchingForSongs.value = true
+            newPipeMusicRepository.searchMusic(query).onSuccess { results ->
+                _addSongsSearchResults.value = results
+            }
+            _isSearchingForSongs.value = false
+        }
+    }
+
+    fun clearSongSearchResults() {
+        _addSongsSearchResults.value = emptyList()
+    }
+
+    fun addTracksToPlaylist(tracks: List<Track>) {
+        viewModelScope.launch {
+            localMusicRepository.insertAndAddTracksToPlaylist(playlistId, tracks)
+        }
+    }
 
     init {
         viewModelScope.launch {
@@ -64,7 +91,23 @@ class PlaylistDetailViewModel(
                 }
             }
         }
+        viewModelScope.launch {
+            _localSongs.value = localMusicRepository.getLocalAudioFiles()
+        }
     }
+
+    fun updatePlaylistDetails(newName: String, newThumbnailUrl: String?) {
+        viewModelScope.launch {
+            val currentPlaylist = playlistWithTracks.value?.playlist ?: return@launch
+            val updatedPlaylist = currentPlaylist.copy(
+                name = newName.ifBlank { currentPlaylist.name },
+                thumbnailUrl = if (!newThumbnailUrl.isNullOrBlank()) newThumbnailUrl else currentPlaylist.thumbnailUrl
+            )
+            localMusicRepository.updatePlaylist(updatedPlaylist)
+        }
+    }
+
+
 
     fun deletePlaylist() {
         viewModelScope.launch {
@@ -73,21 +116,19 @@ class PlaylistDetailViewModel(
     }
 
     fun downloadAllTracks(context: Context) {
-        viewModelScope.launch {
-            val tracksToDownload = playlistTracks.value
-            tracksToDownload.forEach { track ->
-                if (!track.isDownloaded) {
-                    val data = workDataOf(
-                        DownloadWorker.KEY_TRACK_ID to track.id,
-                        DownloadWorker.KEY_TRACK_TITLE to track.title,
-                        DownloadWorker.KEY_TRACK_ARTIST to track.artist
-                    )
-                    val downloadRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
-                        .setInputData(data)
-                        .addTag(DownloadWorker.DOWNLOAD_TAG)
-                        .build()
-                    WorkManager.getInstance(context).enqueue(downloadRequest)
-                }
+        val tracksToDownload = playlistTracks.value
+        tracksToDownload.forEach { track ->
+            if (!track.isDownloaded) {
+                val data = workDataOf(
+                    DownloadWorker.KEY_TRACK_ID to track.id,
+                    DownloadWorker.KEY_TRACK_TITLE to track.title,
+                    DownloadWorker.KEY_TRACK_ARTIST to track.artist
+                )
+                val downloadRequest = OneTimeWorkRequestBuilder<DownloadWorker>()
+                    .setInputData(data)
+                    .addTag(DownloadWorker.DOWNLOAD_TAG)
+                    .build()
+                WorkManager.getInstance(context).enqueue(downloadRequest)
             }
         }
     }

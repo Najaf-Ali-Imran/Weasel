@@ -17,7 +17,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // Add JitPack repository for NewPipe Extractor
         maven { url = uri("https://jitpack.io") }
     }
 }

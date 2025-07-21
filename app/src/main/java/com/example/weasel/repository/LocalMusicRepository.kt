@@ -4,6 +4,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.room.Transaction
 import com.example.weasel.data.Playlist
 import com.example.weasel.data.PlaylistTrackCrossRef
 import com.example.weasel.data.PlaylistWithTracks
@@ -11,8 +12,9 @@ import com.example.weasel.data.Track
 import com.example.weasel.data.HistoryTrack
 import com.example.weasel.data.local.HistoryEntry
 import com.example.weasel.data.local.MusicDao
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-
+import kotlinx.coroutines.withContext
 class LocalMusicRepository(private val musicDao: MusicDao, private val context: Context) {
 
     fun getHistory(): Flow<List<HistoryEntry>> = musicDao.getHistoryWithTimestamp()
@@ -23,9 +25,24 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
         musicDao.createPlaylist(Playlist(name = name))
     }
 
+    suspend fun updatePlaylist(playlist: Playlist) {
+        musicDao.updatePlaylist(playlist)
+    }
+
     suspend fun addToHistory(track: Track) {
         musicDao.insertTrack(track)
         musicDao.addTrackToHistory(HistoryTrack(trackId = track.id))
+    }
+
+
+    @Transaction
+    suspend fun insertAndAddTracksToPlaylist(playlistId: Long, tracks: List<Track>) {
+        musicDao.insertTracks(tracks)
+
+        val crossRefs = tracks.map { track ->
+            PlaylistTrackCrossRef(playlistId = playlistId, trackId = track.id)
+        }
+        musicDao.addTracksToPlaylist(crossRefs)
     }
 
     suspend fun addTracksToPlaylist(playlistId: Long, trackIds: List<String>) {
@@ -39,6 +56,15 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
         musicDao.insertTrack(track)
     }
 
+//    @Transaction
+//    suspend fun addTracksToPlaylist(playlistId: Long, tracks: List<String>) {
+//        musicDao.insertTracks(tracks)
+//
+//        val crossRefs = tracks.map { track ->
+//            PlaylistTrackCrossRef(playlistId = playlistId, trackId = track.id)
+//        }
+//        musicDao.addTracksToPlaylist(crossRefs)
+//    }
     fun getDownloadedTracks(): Flow<List<Track>> = musicDao.getDownloadedTracks()
 
     suspend fun setTrackAsDownloaded(trackId: String, filePath: String) {
@@ -57,7 +83,11 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
         return musicDao.getPlaylistWithTracks(playlistId)
     }
 
-    fun getLocalAudioFiles(): List<Track> {
+    suspend fun getPlaylistByName(name: String): Playlist? {
+        return musicDao.getPlaylistByName(name)
+    }
+
+    suspend fun getLocalAudioFiles(): List<Track> = withContext(Dispatchers.IO) {
         val localTracks = mutableListOf<Track>()
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -105,6 +135,6 @@ class LocalMusicRepository(private val musicDao: MusicDao, private val context: 
                 )
             }
         }
-        return localTracks
+        return@withContext localTracks
     }
 }

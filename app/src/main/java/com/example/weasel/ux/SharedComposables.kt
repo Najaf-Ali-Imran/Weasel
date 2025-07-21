@@ -21,6 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.weasel.R
 import com.example.weasel.ui.resources.AppIcons
 
@@ -40,22 +41,10 @@ fun TopBar(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Image(
-            painter = painterResource(id = AppIcons.Person),
-            contentDescription = "Profile",
-            modifier = Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { /* TODO: Profile */ }
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
+            fontSize = 24.sp,
             color = MaterialTheme.colorScheme.onBackground,
             fontWeight = FontWeight.Bold
         )

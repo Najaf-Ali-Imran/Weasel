@@ -1,3 +1,4 @@
+
 package com.example.weasel.viewmodel
 
 import androidx.compose.runtime.getValue
@@ -9,26 +10,27 @@ import com.example.weasel.data.Track
 import com.example.weasel.repository.NewPipeMusicRepository
 import com.example.weasel.util.AppConnectivityManager
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
+sealed class HomeUiState {
+    object Loading : HomeUiState()
+    data class Success(
+        val popularThisWeek: List<Track>,
+        val topSongsGlobal: List<Track>,
+        val newReleases: List<Track>
+    ) : HomeUiState()
+    data class Error(val message: String) : HomeUiState()
+}
 
 class HomeViewModel(
     private val musicRepository: NewPipeMusicRepository,
     connectivityManager: AppConnectivityManager
 ) : ViewModel() {
 
-    var popularThisWeek by mutableStateOf<List<Track>>(emptyList())
-        private set
-    var topSongsGlobal by mutableStateOf<List<Track>>(emptyList())
-        private set
-    var newReleases by mutableStateOf<List<Track>>(emptyList())
-        private set
-    var isLoading by mutableStateOf(false)
-        private set
-    var errorMessage by mutableStateOf<String?>(null)
+    var uiState by mutableStateOf<HomeUiState>(HomeUiState.Loading)
         private set
 
     val isOnline: StateFlow<Boolean> = connectivityManager.isOnline
@@ -40,10 +42,13 @@ class HomeViewModel(
 
     fun loadHomeData() {
         viewModelScope.launch {
-            if (!isOnline.value) return@launch
+            if (!isOnline.value) {
+                uiState = HomeUiState.Error("You are offline. Please check your connection.")
+                return@launch
+            }
 
-            isLoading = true
-            errorMessage = null
+            uiState = HomeUiState.Loading
+
             try {
                 val trendingDeferred = async { musicRepository.getTrendingTracks("PK", 20) }
                 val topSongsDeferred = async { musicRepository.searchMusic("Top 50 Global playlist") }
@@ -53,20 +58,14 @@ class HomeViewModel(
                 val topSongsResult = topSongsDeferred.await()
                 val newReleasesResult = newReleasesDeferred.await()
 
-                trendingResult.onSuccess { tracks ->
-                    popularThisWeek = tracks.take(10)
-                }
-                topSongsResult.onSuccess { tracks ->
-                    topSongsGlobal = tracks.take(5)
-                }
-                newReleasesResult.onSuccess { tracks ->
-                    newReleases = tracks.take(4)
-                }
+                uiState = HomeUiState.Success(
+                    popularThisWeek = trendingResult.getOrNull()?.take(10) ?: emptyList(),
+                    topSongsGlobal = topSongsResult.getOrNull()?.take(5) ?: emptyList(),
+                    newReleases = newReleasesResult.getOrNull()?.take(4) ?: emptyList()
+                )
 
             } catch (e: Exception) {
-                errorMessage = "Failed to load home content: ${e.message}"
-            } finally {
-                isLoading = false
+                uiState = HomeUiState.Error("Failed to load content: ${e.message}")
             }
         }
     }

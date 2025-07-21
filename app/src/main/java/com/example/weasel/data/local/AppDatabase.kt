@@ -1,6 +1,7 @@
 package com.example.weasel.data.local
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -8,8 +9,11 @@ import com.example.weasel.data.*
 
 @Database(
     entities = [Track::class, Playlist::class, HistoryTrack::class, PlaylistTrackCrossRef::class],
-    version = 5,
-    exportSchema = false
+    version = 6,
+    exportSchema = true,
+    autoMigrations = [
+        AutoMigration(from = 5, to = 6)
+    ]
 )
 abstract class AppDatabase : RoomDatabase() {
 
@@ -26,7 +30,6 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "weasel_database"
                 )
-                    .fallbackToDestructiveMigration()
                     .build()
                 INSTANCE = instance
                 instance

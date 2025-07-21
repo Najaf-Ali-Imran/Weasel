@@ -1,8 +1,10 @@
 package com.example.weasel.data
 
+import android.content.ContentValues
 import android.content.Context
-import android.media.MediaScannerConnection
+import android.os.Build
 import android.os.Environment
+import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
@@ -14,10 +16,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
-import java.io.BufferedOutputStream
 import java.io.File
-import java.io.FileOutputStream
-import java.io.InputStream
 
 class DownloadWorker(
     appContext: Context,
@@ -47,52 +46,74 @@ class DownloadWorker(
                     onSuccess = { url ->
                         val request = Request.Builder().url(url).build()
                         val response: Response = httpClient.newCall(request).execute()
+                        val responseBody = response.body ?: return@withContext Result.failure()
 
-                        val downloadsDir = File(
-                            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC),
-                            "Weasel"
-                        )
-                        if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                        val resolver = applicationContext.contentResolver
+
+                        val audioCollection =
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+                            } else {
+                                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                            }
 
                         val sanitizedTitle = trackTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                         val sanitizedArtist = trackArtist.replace(Regex("[\\\\/:*?\"<>|]"), "_")
                         val fileName = "$sanitizedTitle - $sanitizedArtist.m4a"
-                        val file = File(downloadsDir, fileName)
 
-                        val responseBody = response.body
-                        if (responseBody != null) {
+                        val newSongDetails = ContentValues().apply {
+                            put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+                            put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + File.separator + "Weasel")
+                                put(MediaStore.Audio.Media.IS_PENDING, 1)
+                            } else {
+                                val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
+                                val weaselDir = File(musicDir, "Weasel")
+                                if (!weaselDir.exists()) {
+                                    weaselDir.mkdirs()
+                                }
+                                val file = File(weaselDir, fileName)
+                                put(MediaStore.Audio.Media.DATA, file.absolutePath)
+                            }
+                        }
+
+                        val songUri = resolver.insert(audioCollection, newSongDetails)
+                            ?: return@withContext Result.failure()
+
+                        resolver.openOutputStream(songUri).use { outputStream ->
+                            if (outputStream == null) return@withContext Result.failure()
+
                             val totalBytes = responseBody.contentLength()
-                            responseBody.byteStream().use { input ->
-                                BufferedOutputStream(FileOutputStream(file)).use { output ->
-                                    // Can increase buffer to increase downloading speed
-                                    val buffer = ByteArray(32 * 1024) // 32KB buffer
-                                    var bytesCopied: Long = 0
-                                    var bytes = input.read(buffer)
-                                    while (bytes >= 0) {
-                                        output.write(buffer, 0, bytes)
-                                        bytesCopied += bytes
-                                        bytes = input.read(buffer)
-                                        if (totalBytes > 0) {
-                                            val progress = (bytesCopied * 100 / totalBytes).toInt()
-                                            val progressData = workDataOf(
-                                                KEY_PROGRESS to progress,
-                                                KEY_TRACK_TITLE to trackTitle,
-                                                KEY_TRACK_ARTIST to trackArtist
-                                            )
-                                            setProgress(progressData)
-                                        }
+                            responseBody.byteStream().use { inputStream ->
+                                val buffer = ByteArray(8 * 1024) // 8KB buffer
+                                var bytesCopied: Long = 0
+                                var bytes = inputStream.read(buffer)
+                                while (bytes >= 0) {
+                                    outputStream.write(buffer, 0, bytes)
+                                    bytesCopied += bytes
+                                    bytes = inputStream.read(buffer)
+                                    if (totalBytes > 0) {
+                                        val progress = (bytesCopied * 100 / totalBytes).toInt()
+                                        val progressData = workDataOf(
+                                            KEY_PROGRESS to progress,
+                                            KEY_TRACK_TITLE to trackTitle,
+                                            KEY_TRACK_ARTIST to trackArtist
+                                        )
+                                        setProgress(progressData)
                                     }
                                 }
                             }
-                        } else {
-                            response.close()
-                            return@withContext Result.failure()
                         }
 
-                        response.close()
-                        val filePath = file.absolutePath
-                        MediaScannerConnection.scanFile(applicationContext, arrayOf(filePath), null, null)
-                        musicDao.updateTrackAsDownloaded(trackId, filePath)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            newSongDetails.clear()
+                            newSongDetails.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                            resolver.update(songUri, newSongDetails, null, null)
+                        }
+
+                        musicDao.updateTrackAsDownloaded(trackId, songUri.toString())
 
                         Result.success()
                     },

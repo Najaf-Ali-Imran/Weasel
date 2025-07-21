@@ -27,6 +27,13 @@ interface MusicDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun addTrackToPlaylist(crossRef: PlaylistTrackCrossRef)
 
+    @Query("SELECT * FROM playlists WHERE name = :name LIMIT 1")
+    suspend fun getPlaylistByName(name: String): Playlist?
+    @Update
+    suspend fun updatePlaylist(playlist: Playlist)
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTracks(tracks: List<Track>)
     @Transaction
     @Query("SELECT * FROM playlists WHERE id = :playlistId")
     fun getPlaylistWithTracks(playlistId: Long): Flow<PlaylistWithTracks>
@@ -47,5 +54,6 @@ interface MusicDao {
 
 data class HistoryEntry(
     @Embedded val track: Track,
-    val playedAt: Long
+    val playedAt: Long,
+    @ColumnInfo(name = "trackId") val trackId: String?,
 )
